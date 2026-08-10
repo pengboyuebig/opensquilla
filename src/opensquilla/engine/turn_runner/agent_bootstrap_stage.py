@@ -306,6 +306,31 @@ def _patch_hygiene_block_from_env(
     )
 
 
+_TASK_COMPLETION_GUARD_ENV = "OPENSQUILLA_TASK_COMPLETION_GUARD"
+_TASK_COMPLETION_GUARD_MODES = ("off", "warn_model")
+
+
+def _task_completion_guard_mode_from_env(
+    config_value: Literal["off", "warn_model"] = "off",
+) -> Literal["off", "warn_model"]:
+    """Resolve the finalize-time task completion guard mode.
+
+    Default off. A non-blank ``OPENSQUILLA_TASK_COMPLETION_GUARD`` overrides
+    ``config_value``. Unrecognized env values raise instead of being silently
+    ignored so a run manifest cannot record an override the run did not
+    actually apply.
+    """
+    raw = os.environ.get(_TASK_COMPLETION_GUARD_ENV, "").strip().lower()
+    if not raw:
+        return config_value
+    if raw in _TASK_COMPLETION_GUARD_MODES:
+        return raw  # type: ignore[return-value]
+    raise ValueError(
+        f"{_TASK_COMPLETION_GUARD_ENV} must be one of: "
+        + ", ".join(_TASK_COMPLETION_GUARD_MODES)
+    )
+
+
 def _positive_int_from_env(name: str, default: int) -> int:
     raw = os.environ.get(name)
     if raw is None:
@@ -1192,6 +1217,17 @@ class AgentBootstrapStage:
             post_tool_empty_recovery_mode=_post_tool_empty_recovery_mode_from_env(),
             text_only_tool_recovery_mode=_text_only_tool_recovery_mode_from_env(
                 aux.text_only_tool_recovery_mode
+            ),
+            task_completion_guard_mode=_task_completion_guard_mode_from_env(
+                AgentConfig().task_completion_guard_mode
+            ),
+            task_completion_guard_max_nudges=_positive_int_from_env(
+                "OPENSQUILLA_TASK_COMPLETION_GUARD_MAX_NUDGES",
+                AgentConfig().task_completion_guard_max_nudges,
+            ),
+            proactive_compaction_enabled=_bool_from_env(
+                "OPENSQUILLA_PROACTIVE_COMPACTION",
+                AgentConfig().proactive_compaction_enabled,
             ),
             reasoning_prefill_recovery_mode=_reasoning_prefill_recovery_mode_from_env(),
             runtime_events_path=(os.environ.get("OPENSQUILLA_RUNTIME_EVENTS_PATH") or None),

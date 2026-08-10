@@ -345,6 +345,22 @@ _TEXT_ONLY_TOOL_RECOVERY_MESSAGE = (
     "requires repo inspection, editing, or verification, call the appropriate tool "
     "now; if complete, answer briefly."
 )
+_TASK_COMPLETION_GUARD_MESSAGE = (
+    "[Runtime check]\n"
+    "Before this turn ends, verify the original request is FULLY complete:\n"
+    "1. Re-read the user's request and list every deliverable it asks for.\n"
+    "2. Check that each deliverable actually exists — written to disk via tools, "
+    "not merely described in chat.\n"
+    "3. If anything is missing or partial, continue working NOW: produce the "
+    "remaining content with tool calls, one deliverable at a time. Do not stop "
+    "early just because the reply is getting long.\n"
+    "4. If everything is genuinely complete, or you are blocked and need user "
+    "input, say so explicitly and end the turn."
+)
+# Proactive compaction runs at most this many times per provider call: after a
+# compaction that still leaves the envelope over threshold, the call proceeds
+# and the reactive overflow path stays the backstop.
+_PROACTIVE_COMPACTION_PER_CALL_LIMIT = 2
 _PLAN_RUN_RECONCILIATION_LIMIT = 1
 
 
@@ -2614,9 +2630,14 @@ class Agent:
         usage_event_sink: UsageEventSink | None = None,
         usage_execution_context: UsageExecutionContext | None = None,
         provider_request_correlation: ProviderRequestCorrelation | None = None,
+        run_kind: str = "agent",
     ) -> None:
         self.provider = provider
         self.config = config or AgentConfig()
+        # Turn provenance ("agent" | "heartbeat" | "subagent" | ...). Additive
+        # constructor input so finalize-time interventions can skip run kinds
+        # whose tool-less terminal reply is the normal shape (heartbeat acks).
+        self._run_kind = run_kind or "agent"
         self.tool_definitions = tool_definitions or []
         self._tool_definition_by_name = {tool.name: tool for tool in self.tool_definitions}
         self._raw_tool_handler = tool_handler
@@ -6350,6 +6371,11 @@ class Agent:
         post_tool_empty_recovery_attempted = False
         text_only_tool_recovery_injections = 0
         text_only_tool_recovery_pending = False
+        task_completion_guard_nudges = 0
+        # True while the model has not yet answered the latest guard nudge with
+        # either tool calls (cleared below) or a tool-less reply (accepted as
+        # final). Guarantees at most one nudge per stop episode.
+        task_completion_guard_pending_reply = False
         plan_run_reconciliation_attempts = 0
         attached_plan_run_id = str(
             getattr(self._tool_context, "plan_run_id", "") or ""
@@ -7156,6 +7182,11 @@ class Agent:
                 _attempt_retries_used = _retry_policy.used_attempts()
                 _invalid_response_fallback_done = False
                 _message_limit_recovery_done = False
+                # Proactive-compaction applications since the last provider
+                # call actually started. NOT reset by the compaction
+                # ``continue`` below, so a call can only compact a bounded
+                # number of times before proceeding as-is.
+                _proactive_compactions_this_call = 0
                 while _retry_attempt <= _fallback.max_retries:
                     provider_error = None
                     assistant_text_parts = []
@@ -7432,6 +7463,139 @@ class Agent:
                                 )
                             }
                         )
+
+                    # Proactive context compaction: estimate the exact final
+                    # envelope and, once it crosses the configured overflow
+                    # threshold, compact older context up front instead of
+                    # paying for a provider rejection. Durable outcomes replace
+                    # the live turn messages and restart the retry loop so the
+                    # request is rebuilt from the compacted history; refusals
+                    # and request-scoped (ephemeral) outcomes fall through and
+                    # let the reactive overflow path stay the backstop.
+                    if (
+                        getattr(self.config, "proactive_compaction_enabled", False)
+                        and _proactive_compactions_this_call
+                        < _PROACTIVE_COMPACTION_PER_CALL_LIMIT
+                        and not max_iterations_finalization_pending
+                        and not artifact_delivery_final_response_pending
+                        and not post_write_convergence_finalization_pending
+                    ):
+                        proactive_estimated_tokens = self._estimate_live_request_tokens(
+                            request_messages,
+                            tools=provider_tools_for_call,
+                            config=call_chat_cfg,
+                        )
+                        proactive_window_tokens = max(
+                            1,
+                            int(
+                                self._durable_consumer_window_tokens
+                                or self.config.context_window_tokens
+                                or 1
+                            ),
+                        )
+                        proactive_threshold = max(
+                            1,
+                            int(
+                                proactive_window_tokens
+                                * self.config.context_overflow_threshold
+                            ),
+                        )
+                        if proactive_estimated_tokens > proactive_threshold:
+                            _proactive_compactions_this_call += 1
+                            try:
+                                proactive_outcome = await self._check_context_overflow(
+                                    turn_messages,
+                                    proactive_estimated_tokens,
+                                    request_context_insert_index=(
+                                        request_context_insert_index
+                                    ),
+                                    runtime_context_insert_index=(
+                                        runtime_context_insert_index
+                                    ),
+                                    protected_turn_start_index=current_turn_start_index,
+                                )
+                            except asyncio.CancelledError:
+                                raise
+                            except Exception as exc:  # noqa: BLE001 - optimistic gate
+                                # Proactive compaction is speculative: the
+                                # estimate is a heuristic and the provider may
+                                # still accept the request, so a failing
+                                # summarizer/timeout must never kill the turn.
+                                # Fall through and let the reactive overflow
+                                # path stay the backstop.
+                                logger.warning(
+                                    "compaction.proactive_attempt_failed",
+                                    session_key=self._session_key,
+                                    error_type=type(exc).__name__,
+                                    error=str(exc),
+                                )
+                                proactive_outcome = None
+                            if (
+                                proactive_outcome is not None
+                                and not proactive_outcome.ephemeral_only
+                                and proactive_outcome.messages is not turn_messages
+                            ):
+                                # A prior proactive compaction in this call
+                                # sequence may have staged a durable event that
+                                # no stream has emitted yet: flush it now so its
+                                # persistence/lifecycle is not silently
+                                # overwritten by the new staging below.
+                                staged_pending = (
+                                    self._pending_durable_compaction_event
+                                )
+                                if staged_pending is not None:
+                                    self._pending_durable_compaction_event = None
+                                    yield staged_pending
+                                self._stage_pending_durable_compaction(
+                                    proactive_outcome
+                                )
+                                turn_messages = proactive_outcome.messages
+                                if (
+                                    proactive_outcome.request_context_insert_index
+                                    is not None
+                                ):
+                                    request_context_insert_index = (
+                                        proactive_outcome.request_context_insert_index
+                                    )
+                                if (
+                                    proactive_outcome.runtime_context_insert_index
+                                    is not None
+                                ):
+                                    runtime_context_insert_index = (
+                                        proactive_outcome.runtime_context_insert_index
+                                    )
+                                if (
+                                    proactive_outcome.protected_turn_start_index
+                                    is not None
+                                ):
+                                    current_turn_start_index = (
+                                        proactive_outcome.protected_turn_start_index
+                                    )
+                                message_count_request_view = None
+                                self.config.metadata["proactive_context_compactions"] = (
+                                    self.config.metadata.get(
+                                        "proactive_context_compactions", 0
+                                    )
+                                    + 1
+                                )
+                                self._write_turn_call_log(
+                                    "proactive_context_compaction",
+                                    action="compact",
+                                    reason="context_window_threshold",
+                                    iteration=iterations,
+                                    attempt=_call_attempt,
+                                    estimated_tokens=proactive_estimated_tokens,
+                                    threshold_tokens=proactive_threshold,
+                                )
+                                yield WarningEvent(
+                                    code="context_proactive_compaction",
+                                    message=(
+                                        "Context window threshold crossed; "
+                                        "compacting older context automatically "
+                                        "before the next provider call."
+                                    ),
+                                )
+                                continue
 
                     self._write_turn_call_log(
                         "llm_request",
@@ -9534,9 +9698,12 @@ class Agent:
                                     provider_compaction_window_tokens
                                     or self.config.context_window_tokens
                                 ) + 1
-                            effective_overflow_retries = min(
-                                1,
-                                max(0, int(self.config.max_overflow_retries or 0)),
+                            # Honor the configured per-episode budget verbatim
+                            # (default 2). The budget refreshes after every
+                            # successful provider call, so long-running turns
+                            # survive repeated compaction episodes.
+                            effective_overflow_retries = max(
+                                0, int(self.config.max_overflow_retries or 0)
                             )
                             if overflow_retries >= effective_overflow_retries:
                                 yield self._transition(AgentState.ERROR)
@@ -10293,6 +10460,15 @@ class Agent:
                     break
                 if artifact_delivery_degraded_final_response:
                     break
+
+                # The provider actually completed this call: refresh the
+                # per-turn overflow budget so a long-running turn survives
+                # repeated compaction episodes instead of exhausting its
+                # budget on the first few. A sequence that died without a
+                # done event keeps the spent budget (the classification
+                # below terminates the turn anyway).
+                if _got_done_event:
+                    overflow_retries = 0
 
                 response_text = "".join(assistant_text_parts)
                 final_stop_reason = (
@@ -11320,9 +11496,100 @@ class Agent:
                                     ),
                                 )
                                 continue
+                    task_completion_guard_mode = getattr(
+                        self.config,
+                        "task_completion_guard_mode",
+                        "off",
+                    )
+                    if (
+                        task_completion_guard_mode == "warn_model"
+                        # A heartbeat's tool-less ack is the normal terminal
+                        # shape, not a premature stop -- never nudge it.
+                        and self._run_kind != "heartbeat"
+                        and not max_iterations_finalization_pending
+                        and not artifact_delivery_final_response_pending
+                        and not post_write_convergence_finalization_pending
+                    ):
+                        # Same headroom rule as the evidence gate: never spend
+                        # the run's last LLM call or deadline slack on a nudge.
+                        guard_headroom = _turn_llm_call_budget_error(
+                            turn_llm_calls + 1
+                        ) is None and (
+                            _total_deadline is None or _loop.time() < _total_deadline
+                        )
+                        guard_max_nudges = max(
+                            0,
+                            int(
+                                getattr(
+                                    self.config,
+                                    "task_completion_guard_max_nudges",
+                                    16,
+                                )
+                                or 0
+                            ),
+                        )
+                        # A tool-less reply to a previous nudge is accepted as
+                        # final: the model explicitly confirmed completion or
+                        # asked for user input, so nudging again would only
+                        # loop on the same answer.
+                        guard_suppressed = (
+                            not guard_headroom
+                            or task_completion_guard_pending_reply
+                            or task_completion_guard_nudges >= guard_max_nudges
+                        )
+                        self.config.metadata["task_completion_guard_detections"] = (
+                            self.config.metadata.get(
+                                "task_completion_guard_detections",
+                                0,
+                            )
+                            + 1
+                        )
+                        if not guard_suppressed:
+                            task_completion_guard_nudges += 1
+                            task_completion_guard_pending_reply = True
+                            # Keep the emitted text: for long writing tasks the
+                            # premature "final" message often carries real
+                            # content (and was already streamed live); only the
+                            # turn's END is deferred, not its output.
+                            turn_messages.append(
+                                Message(
+                                    role="user",
+                                    content=_TASK_COMPLETION_GUARD_MESSAGE,
+                                )
+                            )
+                            self.config.metadata["task_completion_guard_nudges"] = (
+                                self.config.metadata.get(
+                                    "task_completion_guard_nudges",
+                                    0,
+                                )
+                                + 1
+                            )
+                            self._write_turn_call_log(
+                                "task_completion_guard",
+                                action="nudge",
+                                mode=task_completion_guard_mode,
+                                reason="finalize_before_completion_confirmed",
+                                iteration=iterations,
+                                provider_call_count=turn_llm_calls,
+                                nudge=task_completion_guard_nudges,
+                                max_nudges=guard_max_nudges,
+                            )
+                            yield WarningEvent(
+                                code="task_completion_guard",
+                                message=(
+                                    "The model attempted to finish; asking it to "
+                                    "confirm every requested deliverable exists or "
+                                    "continue working."
+                                ),
+                            )
+                            continue
                     max_iterations_finalization_pending = False
                     post_write_convergence_finalization_pending = False
                     break
+                # Any iteration that produced tool calls answers the guard
+                # nudge with work, so the next tool-less stop earns a fresh
+                # completion check (budget permitting).
+                task_completion_guard_pending_reply = False
                 tool_calls = [self._coerce_meta_tool_call(tc) for tc in tool_calls]
                 tool_calls = self._force_matched_meta_invoke_tool_calls(tool_calls)
 

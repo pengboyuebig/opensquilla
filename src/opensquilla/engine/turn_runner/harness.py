@@ -923,6 +923,7 @@ class _TurnRunnerAgentFactoryAdapter(AgentFactoryPort):
             usage_event_sink=usage_event_sink,
             usage_execution_context=usage_execution_context,
             provider_request_correlation=provider_request_correlation,
+            run_kind=run_kind,
         )
 
 

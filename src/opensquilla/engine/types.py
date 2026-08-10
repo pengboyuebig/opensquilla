@@ -824,6 +824,29 @@ class AgentConfig:
     post_tool_empty_recovery_mode: Literal["off", "log", "warn_model"] = "log"
     text_only_tool_recovery_mode: Literal["off", "log", "warn_model"] = "off"
     reasoning_prefill_recovery_mode: Literal["off", "log", "recover"] = "log"
+    # Finalize-time task completion guard. "off" (default) keeps the classic
+    # contract: a tool-less assistant reply ends the turn. "warn_model"
+    # injects one bounded completion-check nudge whenever the model tries to
+    # end the turn, asking it to either continue unfinished work via tool
+    # calls or explicitly confirm completion. A tool-less reply to the nudge
+    # is always accepted as final, so the guard can never trap a turn; the
+    # per-turn nudge budget is ``task_completion_guard_max_nudges``. Intended
+    # for long multi-deliverable tasks (e.g. "finish writing this volume")
+    # where a premature stop leaves the request half done. Set via
+    # OPENSQUILLA_TASK_COMPLETION_GUARD; budget via
+    # OPENSQUILLA_TASK_COMPLETION_GUARD_MAX_NUDGES.
+    task_completion_guard_mode: Literal["off", "warn_model"] = "off"
+    task_completion_guard_max_nudges: int = 16
+    # Proactive in-turn context compaction. Off by default: compaction only
+    # fires reactively after the provider rejects an oversized request. When
+    # on, every provider call first estimates the final request envelope and,
+    # once it crosses ``context_overflow_threshold`` of the context window,
+    # compacts older context up front — long-running turns (e.g. sustained by
+    # the task completion guard) compress automatically instead of dying on a
+    # provider context-overflow error. Refusals fall through to the normal
+    # request, so the reactive path stays the backstop. Set via
+    # OPENSQUILLA_PROACTIVE_COMPACTION.
+    proactive_compaction_enabled: bool = False
     runtime_events_path: str | None = None
     tool_result_store_dir: str | None = None
     tool_result_store_session_id: str | None = None
