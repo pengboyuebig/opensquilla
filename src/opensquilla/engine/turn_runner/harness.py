@@ -804,6 +804,16 @@ class _TurnRunnerAgentConfigBuilderAdapter(AgentConfigBuilderPort):
                 "agent_retry_max_backoff_ms",
                 None,
             ),
+            task_completion_guard_max_nudges=getattr(
+                runner._config,
+                "task_completion_guard_max_nudges",
+                None,
+            ),
+            task_completion_guard_max_unmarked_stops=getattr(
+                runner._config,
+                "task_completion_guard_max_unmarked_stops",
+                None,
+            ),
         )
 
 class _TurnRunnerMemorySnapshotAdapter(MemorySnapshotPort):

@@ -485,6 +485,10 @@ class _AgentConfigAuxiliaries:
     # Gateway agent_retry_*_backoff_ms (None keeps the AgentConfig default).
     agent_retry_base_backoff_ms: int | None = None
     agent_retry_max_backoff_ms: int | None = None
+    # Gateway task_completion_guard_* budgets (None keeps the AgentConfig
+    # default; env vars still override both).
+    task_completion_guard_max_nudges: int | None = None
+    task_completion_guard_max_unmarked_stops: int | None = None
 
 
 @dataclass(frozen=True)
@@ -1234,9 +1238,21 @@ class AgentBootstrapStage:
             task_completion_guard_mode=_task_completion_guard_mode_from_env(
                 AgentConfig().task_completion_guard_mode
             ),
-            task_completion_guard_max_nudges=_positive_int_from_env(
+            task_completion_guard_max_nudges=_nonnegative_int_from_env(
                 "OPENSQUILLA_TASK_COMPLETION_GUARD_MAX_NUDGES",
-                AgentConfig().task_completion_guard_max_nudges,
+                (
+                    aux.task_completion_guard_max_nudges
+                    if aux.task_completion_guard_max_nudges is not None
+                    else AgentConfig().task_completion_guard_max_nudges
+                ),
+            ),
+            task_completion_guard_max_unmarked_stops=_nonnegative_int_from_env(
+                "OPENSQUILLA_TASK_COMPLETION_GUARD_MAX_UNMARKED_STOPS",
+                (
+                    aux.task_completion_guard_max_unmarked_stops
+                    if aux.task_completion_guard_max_unmarked_stops is not None
+                    else AgentConfig().task_completion_guard_max_unmarked_stops
+                ),
             ),
             proactive_compaction_enabled=_bool_from_env(
                 "OPENSQUILLA_PROACTIVE_COMPACTION",

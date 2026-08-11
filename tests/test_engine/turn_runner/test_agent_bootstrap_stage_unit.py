@@ -64,6 +64,8 @@ def _default_aux(
     text_only_tool_recovery_mode: str | None = "off",
     agent_retry_base_backoff_ms: int | None = None,
     agent_retry_max_backoff_ms: int | None = None,
+    task_completion_guard_max_nudges: int | None = None,
+    task_completion_guard_max_unmarked_stops: int | None = None,
 ) -> _AgentConfigAuxiliaries:
     return _AgentConfigAuxiliaries(
         thinking=thinking,
@@ -100,6 +102,8 @@ def _default_aux(
         text_only_tool_recovery_mode=text_only_tool_recovery_mode,
         agent_retry_base_backoff_ms=agent_retry_base_backoff_ms,
         agent_retry_max_backoff_ms=agent_retry_max_backoff_ms,
+        task_completion_guard_max_nudges=task_completion_guard_max_nudges,
+        task_completion_guard_max_unmarked_stops=task_completion_guard_max_unmarked_stops,
     )
 
 
@@ -388,6 +392,43 @@ async def test_retry_backoff_gateway_config_threads_to_agent_config() -> None:
 
     assert out.output.agent_config.retry_base_backoff_ms == 30_000
     assert out.output.agent_config.retry_max_backoff_ms == 30_000
+
+
+@pytest.mark.asyncio
+async def test_task_completion_guard_budgets_thread_to_agent_config(monkeypatch) -> None:
+    """Gateway guard budgets reach the AgentConfig; unset fields keep the
+    AgentConfig defaults; env vars override both."""
+    monkeypatch.delenv("OPENSQUILLA_TASK_COMPLETION_GUARD_MAX_NUDGES", raising=False)
+    monkeypatch.delenv(
+        "OPENSQUILLA_TASK_COMPLETION_GUARD_MAX_UNMARKED_STOPS", raising=False
+    )
+    stage = _make_stage(
+        aux=_RecordingAgentConfigBuilder(
+            aux=_default_aux(
+                task_completion_guard_max_nudges=64,
+                task_completion_guard_max_unmarked_stops=6,
+            )
+        )
+    )
+    out = await stage.run(_make_input())
+
+    assert out.output.agent_config.task_completion_guard_max_nudges == 64
+    assert out.output.agent_config.task_completion_guard_max_unmarked_stops == 6
+
+    default_stage = _make_stage()
+    default_out = await default_stage.run(_make_input())
+    assert (
+        default_out.output.agent_config.task_completion_guard_max_nudges
+        == AgentConfig().task_completion_guard_max_nudges
+    )
+    assert (
+        default_out.output.agent_config.task_completion_guard_max_unmarked_stops
+        == AgentConfig().task_completion_guard_max_unmarked_stops
+    )
+
+    monkeypatch.setenv("OPENSQUILLA_TASK_COMPLETION_GUARD_MAX_NUDGES", "32")
+    env_out = await stage.run(_make_input())
+    assert env_out.output.agent_config.task_completion_guard_max_nudges == 32
 
 
 @pytest.mark.asyncio

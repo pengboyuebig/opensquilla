@@ -2635,6 +2635,14 @@ class GatewayConfig(BaseSettings):
     # Maximum provider-level retries for transient errors. ``None`` means
     # use the AgentConfig default.
     agent_max_provider_retries: int | None = None
+    # Task completion guard budgets. ``None`` defers to the AgentConfig
+    # defaults (max_nudges 16 / max_unmarked_stops 2); the
+    # OPENSQUILLA_TASK_COMPLETION_GUARD_MAX_NUDGES /
+    # OPENSQUILLA_TASK_COMPLETION_GUARD_MAX_UNMARKED_STOPS env vars still
+    # override both. Raise these for long multi-deliverable tasks where the
+    # model tends to report progress with text-only replies between chapters.
+    task_completion_guard_max_nudges: int | None = Field(default=None, ge=0)
+    task_completion_guard_max_unmarked_stops: int | None = Field(default=None, ge=0)
     # Backoff schedule (milliseconds) between provider retries. ``None``
     # means use the AgentConfig defaults (base 1000 / cap 30000, exponential
     # with jitter). Set base == cap (e.g. 30000/30000) for a flat interval.

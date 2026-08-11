@@ -244,6 +244,156 @@ async def test_guard_respects_nudge_budget() -> None:
 
 
 @pytest.mark.asyncio
+async def test_guard_unmarked_stops_budget_configurable_tighter() -> None:
+    """max_unmarked_stops=1 accepts the first repeated plain-text stop."""
+
+    provider = _SequenceProvider(
+        [
+            _text_stream("done?"),
+            _text_stream("still just text"),
+        ]
+    )
+
+    agent = Agent(
+        provider=provider,
+        config=AgentConfig(
+            task_completion_guard_mode="warn_model",
+            task_completion_guard_max_unmarked_stops=1,
+            retry_base_backoff_ms=0,
+            retry_max_backoff_ms=0,
+        ),
+        tool_definitions=[_echo_tool()],
+        tool_handler=_tool_handler,
+    )
+
+    events = [event async for event in agent.run_turn("write the volume")]
+
+    assert any(event.kind == "done" for event in events)
+    # One nudge after the first stop; the second unmarked stop hits the
+    # tighter budget and is accepted immediately.
+    assert len(provider.calls) == 2
+    assert agent.config.metadata["task_completion_guard_nudges"] == 1
+
+
+@pytest.mark.asyncio
+async def test_guard_unmarked_stops_budget_configurable_looser() -> None:
+    """max_unmarked_stops=4 tolerates four consecutive plain-text stops."""
+
+    provider = _SequenceProvider(
+        [_text_stream(f"reply {i}") for i in range(5)]
+    )
+
+    agent = Agent(
+        provider=provider,
+        config=AgentConfig(
+            task_completion_guard_mode="warn_model",
+            task_completion_guard_max_unmarked_stops=4,
+            retry_base_backoff_ms=0,
+            retry_max_backoff_ms=0,
+        ),
+        tool_definitions=[_echo_tool()],
+        tool_handler=_tool_handler,
+    )
+
+    events = [event async for event in agent.run_turn("write the volume")]
+
+    assert any(event.kind == "done" for event in events)
+    # 4 nudges, then the 5th unmarked stop is accepted.
+    assert len(provider.calls) == 5
+    assert agent.config.metadata["task_completion_guard_nudges"] == 4
+    # The injected nudge carries the running budget so the model can see the
+    # escalation (first nudge reports 1/<budget>).
+    first_nudge = _guard_messages(provider.calls[1])[0]
+    assert "[Runtime nudge 1/16 this turn]" in first_nudge.content
+
+
+@pytest.mark.asyncio
+async def test_guard_nudge_message_warns_text_only_will_end_turn() -> None:
+    """The strengthened nudge tells tool-capable models the exact two-way choice."""
+    provider = _SequenceProvider(
+        [
+            _text_stream("done?"),
+            _text_stream("[TASK_COMPLETE] 确认完成"),
+        ]
+    )
+
+    agent = Agent(
+        provider=provider,
+        config=AgentConfig(
+            task_completion_guard_mode="warn_model",
+            retry_base_backoff_ms=0,
+            retry_max_backoff_ms=0,
+        ),
+        tool_definitions=[_echo_tool()],
+        tool_handler=_tool_handler,
+    )
+
+    _ = [event async for event in agent.run_turn("write the volume")]
+
+    nudge = _guard_messages(provider.calls[1])[0]
+    assert "END THE TURN" in nudge.content
+    assert "MUST be a tool call" in nudge.content
+
+
+@pytest.mark.asyncio
+async def test_guard_rejects_marker_not_at_reply_start() -> None:
+    """The marker is a completion prefix, not an arbitrary text substring."""
+    provider = _SequenceProvider(
+        [
+            _text_stream("done?"),
+            _text_stream("Still unfinished, but [TASK_COMPLETE] appears here."),
+            _text_stream("[TASK_COMPLETE] 确认完成"),
+        ]
+    )
+
+    agent = Agent(
+        provider=provider,
+        config=AgentConfig(
+            task_completion_guard_mode="warn_model",
+            retry_base_backoff_ms=0,
+            retry_max_backoff_ms=0,
+        ),
+        tool_definitions=[_echo_tool()],
+        tool_handler=_tool_handler,
+    )
+
+    events = [event async for event in agent.run_turn("write the volume")]
+
+    assert any(event.kind == "done" for event in events)
+    assert len(provider.calls) == 3
+    assert agent.config.metadata["task_completion_guard_nudges"] == 2
+    assert agent.config.metadata["task_completion_guard_marker_completions"] == 1
+
+
+@pytest.mark.asyncio
+async def test_guard_nudge_allows_direct_continuation_without_tools() -> None:
+    """Pure-chat tasks are told to continue in text instead of calling a
+    tool that the provider was not given."""
+    provider = _SequenceProvider(
+        [
+            _text_stream("第一章已完成"),
+            _text_stream("[TASK_COMPLETE] 全卷正文已继续完成。"),
+        ]
+    )
+
+    agent = Agent(
+        provider=provider,
+        config=AgentConfig(
+            task_completion_guard_mode="warn_model",
+            retry_base_backoff_ms=0,
+            retry_max_backoff_ms=0,
+        ),
+    )
+
+    _ = [event async for event in agent.run_turn("continue writing the novel")]
+
+    nudge = _guard_messages(provider.calls[1])[0]
+    assert "no tools are available" in nudge.content
+    assert "continue the unfinished deliverable directly in your response" in nudge.content
+    assert "MUST be a tool call" not in nudge.content
+
+
+@pytest.mark.asyncio
 async def test_proactive_compaction_compacts_before_oversized_call() -> None:
     provider = _SequenceProvider([_text_stream("continued")])
 

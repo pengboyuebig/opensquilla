@@ -353,21 +353,42 @@ _TASK_COMPLETION_GUARD_MESSAGE = (
     "confirmation, or pacing instructions.\n"
     "Before this turn may end, verify the original request is FULLY complete:\n"
     "1. Re-read the user's request and list every deliverable it asks for.\n"
-    "2. Verify each deliverable actually exists — written to disk via tools, "
-    "not merely described in chat.\n"
-    "3. If anything is missing or partial, continue working NOW with tool "
-    "calls, one deliverable at a time. Do not stop early just because the "
-    "reply is getting long.\n"
+    "2. Verify each deliverable actually exists; if the requested output is a "
+    "workspace artifact, verify it was written to disk via tools, not merely "
+    "described in chat.\n"
+    "3. If anything is missing or partial, continue working NOW. Do not stop "
+    "early just because the reply is getting long.\n"
     f"4. You may end the turn ONLY when every deliverable verifiably exists: "
     f"then begin your reply with the exact token {_TASK_COMPLETION_GUARD_MARKER} "
     "and give a one-paragraph summary.\n"
     "A text-only reply without that token is treated as unfinished work and "
-    "the turn continues."
+    "the turn continues.\n"
 )
-# Consecutive unmarked text-only stops tolerated per stop episode: the model
-# gets this many nudges to either resume work via tools or emit the completion
-# marker before its stop is accepted anyway (bounds the cost of a model that
-# keeps answering plain text, e.g. a genuine clarifying question).
+
+
+def _task_completion_guard_message(*, tools_available: bool) -> str:
+    """Build the finalization nudge for the tools exposed on this call."""
+    if tools_available:
+        continuation_instruction = (
+            "IMPORTANT: if you keep answering with text only — no tool call and no "
+            f"{_TASK_COMPLETION_GUARD_MARKER} token — the runtime will accept your "
+            "stop and END THE TURN, abandoning any unfinished work. To keep working, "
+            "your very next action MUST be a tool call."
+        )
+    else:
+        continuation_instruction = (
+            "IMPORTANT: no tools are available for this call. If work remains, "
+            "continue the unfinished deliverable directly in your response; do not "
+            f"use {_TASK_COMPLETION_GUARD_MARKER} until it is complete."
+        )
+    return _TASK_COMPLETION_GUARD_MESSAGE + continuation_instruction
+
+
+# Default consecutive unmarked text-only stops tolerated per stop episode:
+# the model gets this many nudges to either resume work via tools or emit the
+# completion marker before its stop is accepted anyway (bounds the cost of a
+# model that keeps answering plain text, e.g. a genuine clarifying question).
+# Configurable via AgentConfig.task_completion_guard_max_unmarked_stops.
 _TASK_COMPLETION_GUARD_MAX_UNMARKED_STOPS = 2
 # Proactive compaction runs at most this many times per provider call: after a
 # compaction that still leaves the envelope over threshold, the call proceeds
@@ -11548,21 +11569,31 @@ class Agent:
                                 or 0
                             ),
                         )
-                        # Marker protocol: a stop carrying [TASK_COMPLETE] near
-                        # the reply head is an explicit, verified completion
-                        # claim -- accept it. Any other tool-less reply (a bare
-                        # "done", an acknowledgment, or "waiting for your
-                        # instruction") is treated as unfinished work and
-                        # nudged again, up to the per-episode unmarked budget.
-                        guard_marker_zone = visible_text.strip()[:120]
-                        guard_marker_present = (
-                            _TASK_COMPLETION_GUARD_MARKER in guard_marker_zone
+                        guard_max_unmarked_stops = max(
+                            0,
+                            int(
+                                getattr(
+                                    self.config,
+                                    "task_completion_guard_max_unmarked_stops",
+                                    _TASK_COMPLETION_GUARD_MAX_UNMARKED_STOPS,
+                                )
+                                or 0
+                            ),
+                        )
+                        # Marker protocol: an exact [TASK_COMPLETE] prefix is
+                        # an explicit, verified completion claim -- accept it.
+                        # Any other tool-less reply (a bare "done", an
+                        # acknowledgment, or "waiting for your instruction")
+                        # is treated as unfinished work and nudged again, up
+                        # to the per-episode unmarked budget.
+                        guard_marker_present = visible_text.lstrip().startswith(
+                            _TASK_COMPLETION_GUARD_MARKER
                         )
                         guard_suppressed = (
                             not guard_headroom
                             or guard_marker_present
                             or task_completion_guard_unmarked_stops
-                            >= _TASK_COMPLETION_GUARD_MAX_UNMARKED_STOPS
+                            >= guard_max_unmarked_stops
                             or task_completion_guard_nudges >= guard_max_nudges
                         )
                         self.config.metadata["task_completion_guard_detections"] = (
@@ -11599,7 +11630,13 @@ class Agent:
                             turn_messages.append(
                                 Message(
                                     role="user",
-                                    content=_TASK_COMPLETION_GUARD_MESSAGE,
+                                    content=(
+                                        _task_completion_guard_message(
+                                            tools_available=bool(provider_tools_for_call)
+                                        )
+                                        + f"\n[Runtime nudge {task_completion_guard_nudges}"
+                                        f"/{guard_max_nudges} this turn]"
+                                    ),
                                 )
                             )
                             self.config.metadata["task_completion_guard_nudges"] = (

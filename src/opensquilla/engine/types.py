@@ -830,14 +830,18 @@ class AgentConfig:
     # end the turn, asking it to either continue unfinished work via tool
     # calls or explicitly confirm completion by starting its reply with the
     # exact token [TASK_COMPLETE]. An unmarked tool-less stop is nudged again
-    # (up to two consecutive times per stop episode, then accepted), and the
-    # per-turn nudge budget is ``task_completion_guard_max_nudges`` — so the
-    # guard can never trap a turn. Intended for long multi-deliverable tasks
-    # (e.g. "finish writing this volume") where a premature stop leaves the
-    # request half done. Set via OPENSQUILLA_TASK_COMPLETION_GUARD; budget via
-    # OPENSQUILLA_TASK_COMPLETION_GUARD_MAX_NUDGES.
+    # (up to ``task_completion_guard_max_unmarked_stops`` consecutive times
+    # per stop episode, then accepted), and the per-turn nudge budget is
+    # ``task_completion_guard_max_nudges`` — so the guard can never trap a
+    # turn. Intended for long multi-deliverable tasks (e.g. "finish writing
+    # this volume") where a premature stop leaves the request half done.
+    # Set via OPENSQUILLA_TASK_COMPLETION_GUARD; budgets via
+    # OPENSQUILLA_TASK_COMPLETION_GUARD_MAX_NUDGES and
+    # OPENSQUILLA_TASK_COMPLETION_GUARD_MAX_UNMARKED_STOPS (env overrides
+    # gateway config, which overrides these defaults).
     task_completion_guard_mode: Literal["off", "warn_model"] = "off"
     task_completion_guard_max_nudges: int = 16
+    task_completion_guard_max_unmarked_stops: int = 2
     # Proactive in-turn context compaction. Off by default: compaction only
     # fires reactively after the provider rejects an oversized request. When
     # on, every provider call first estimates the final request envelope and,
