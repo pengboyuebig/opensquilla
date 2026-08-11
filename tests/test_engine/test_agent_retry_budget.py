@@ -459,6 +459,17 @@ async def test_transport_error_retries_until_configured_budget() -> None:
         event.kind == "done" and event.text == "recovered" for event in events
     )
     assert not any(event.kind == "error" for event in events)
+    # Each budgeted retry surfaces a user-visible progress warning carrying
+    # the attempt number, the budget, and the sleep interval.
+    retry_warnings = [
+        event for event in events
+        if event.kind == "warning" and event.code == "provider_retry"
+    ]
+    assert len(retry_warnings) == 3
+    assert "retry 1/15 in 0s" in retry_warnings[0].message
+    assert "retry 2/15 in 0s" in retry_warnings[1].message
+    assert "retry 3/15 in 0s" in retry_warnings[2].message
+    assert "transport_transient" in retry_warnings[0].message
 
 
 @pytest.mark.asyncio
@@ -482,3 +493,9 @@ async def test_transport_error_surfaces_only_after_budget_exhausted() -> None:
     # 1 initial attempt + 2 budgeted retries, then the error surfaces.
     assert len(provider.calls) == 3
     assert any(event.kind == "error" and event.code == "request_error" for event in events)
+    retry_warnings = [
+        event for event in events
+        if event.kind == "warning" and event.code == "provider_retry"
+    ]
+    assert len(retry_warnings) == 2
+    assert "retry 2/2" in retry_warnings[-1].message

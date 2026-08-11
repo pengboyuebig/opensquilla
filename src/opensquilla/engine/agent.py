@@ -10464,6 +10464,14 @@ class Agent:
                             kind=kind.value,
                             delay_s=round(delay, 2),
                         )
+                        yield WarningEvent(
+                            code="provider_retry",
+                            message=(
+                                f"Provider request failed ({kind.value}); "
+                                f"retry {_retry_attempt + 1}/{_fallback.max_retries} "
+                                f"in {delay:.0f}s."
+                            ),
+                        )
                         await asyncio.sleep(delay)
                         _retry_attempt += 1
                         _call_attempt += 1
