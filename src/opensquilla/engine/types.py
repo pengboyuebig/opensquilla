@@ -826,14 +826,15 @@ class AgentConfig:
     reasoning_prefill_recovery_mode: Literal["off", "log", "recover"] = "log"
     # Finalize-time task completion guard. "off" (default) keeps the classic
     # contract: a tool-less assistant reply ends the turn. "warn_model"
-    # injects one bounded completion-check nudge whenever the model tries to
+    # injects a bounded completion-check nudge whenever the model tries to
     # end the turn, asking it to either continue unfinished work via tool
-    # calls or explicitly confirm completion. A tool-less reply to the nudge
-    # is always accepted as final, so the guard can never trap a turn; the
-    # per-turn nudge budget is ``task_completion_guard_max_nudges``. Intended
-    # for long multi-deliverable tasks (e.g. "finish writing this volume")
-    # where a premature stop leaves the request half done. Set via
-    # OPENSQUILLA_TASK_COMPLETION_GUARD; budget via
+    # calls or explicitly confirm completion by starting its reply with the
+    # exact token [TASK_COMPLETE]. An unmarked tool-less stop is nudged again
+    # (up to two consecutive times per stop episode, then accepted), and the
+    # per-turn nudge budget is ``task_completion_guard_max_nudges`` — so the
+    # guard can never trap a turn. Intended for long multi-deliverable tasks
+    # (e.g. "finish writing this volume") where a premature stop leaves the
+    # request half done. Set via OPENSQUILLA_TASK_COMPLETION_GUARD; budget via
     # OPENSQUILLA_TASK_COMPLETION_GUARD_MAX_NUDGES.
     task_completion_guard_mode: Literal["off", "warn_model"] = "off"
     task_completion_guard_max_nudges: int = 16

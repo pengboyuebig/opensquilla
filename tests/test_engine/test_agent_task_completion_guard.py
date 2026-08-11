@@ -112,13 +112,13 @@ async def test_guard_off_ends_turn_on_text_only_stop() -> None:
 
 
 @pytest.mark.asyncio
-async def test_guard_nudges_then_accepts_tool_less_confirmation() -> None:
+async def test_guard_nudges_then_accepts_completion_marker() -> None:
     provider = _SequenceProvider(
         [
             _text_stream("first half written"),
             _tool_stream("tool-1"),
             _text_stream("everything is written"),
-            _text_stream("confirmed complete"),
+            _text_stream("[TASK_COMPLETE] 全部交付物已写入磁盘并核验。"),
         ]
     )
 
@@ -143,10 +143,42 @@ async def test_guard_nudges_then_accepts_tool_less_confirmation() -> None:
         if event.kind == "warning" and event.code == "task_completion_guard"
     ]
     # One nudge after the first premature stop, another after the post-tool
-    # stop; the tool-less reply to the second nudge is accepted as final.
+    # stop; the marked reply is accepted immediately without a third nudge.
     assert len(guard_warnings) == 2
     assert len(_guard_messages(provider.calls[1])) == 1
     assert len(_guard_messages(provider.calls[3])) == 2
+    assert agent.config.metadata["task_completion_guard_nudges"] == 2
+    assert agent.config.metadata["task_completion_guard_marker_completions"] == 1
+
+
+@pytest.mark.asyncio
+async def test_guard_nudges_unmarked_acknowledgment_again() -> None:
+    """The 'writes one chapter then promises to continue' escape is closed."""
+
+    provider = _SequenceProvider(
+        [
+            _text_stream("第一章已完成"),
+            _text_stream("好的，我继续写第二章"),  # 光说不练，无标记
+            _text_stream("[TASK_COMPLETE] 确认完成"),
+        ]
+    )
+
+    agent = Agent(
+        provider=provider,
+        config=AgentConfig(
+            task_completion_guard_mode="warn_model",
+            retry_base_backoff_ms=0,
+            retry_max_backoff_ms=0,
+        ),
+        tool_definitions=[_echo_tool()],
+        tool_handler=_tool_handler,
+    )
+
+    events = [event async for event in agent.run_turn("write the volume")]
+
+    assert any(event.kind == "done" for event in events)
+    # The unmarked "我继续" gets nudged again instead of ending the turn.
+    assert len(provider.calls) == 3
     assert agent.config.metadata["task_completion_guard_nudges"] == 2
 
 
@@ -173,8 +205,11 @@ async def test_guard_never_loops_on_repeated_text_only_replies() -> None:
     events = [event async for event in agent.run_turn("write the volume")]
 
     assert any(event.kind == "done" for event in events)
-    assert len(provider.calls) == 2
-    assert agent.config.metadata["task_completion_guard_nudges"] == 1
+    # Two unmarked text-only stops per episode are tolerated, then the stop
+    # is accepted -- a model that keeps answering plain text (e.g. a genuine
+    # question) never loops the turn forever.
+    assert len(provider.calls) == 3
+    assert agent.config.metadata["task_completion_guard_nudges"] == 2
 
 
 @pytest.mark.asyncio

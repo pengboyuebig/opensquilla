@@ -345,18 +345,30 @@ _TEXT_ONLY_TOOL_RECOVERY_MESSAGE = (
     "requires repo inspection, editing, or verification, call the appropriate tool "
     "now; if complete, answer briefly."
 )
+_TASK_COMPLETION_GUARD_MARKER = "[TASK_COMPLETE]"
 _TASK_COMPLETION_GUARD_MESSAGE = (
     "[Runtime check]\n"
-    "Before this turn ends, verify the original request is FULLY complete:\n"
+    "Autonomous mode: the user has instructed you to keep working WITHOUT "
+    "waiting for further input. Do not stop to ask for permission, "
+    "confirmation, or pacing instructions.\n"
+    "Before this turn may end, verify the original request is FULLY complete:\n"
     "1. Re-read the user's request and list every deliverable it asks for.\n"
-    "2. Check that each deliverable actually exists — written to disk via tools, "
+    "2. Verify each deliverable actually exists — written to disk via tools, "
     "not merely described in chat.\n"
-    "3. If anything is missing or partial, continue working NOW: produce the "
-    "remaining content with tool calls, one deliverable at a time. Do not stop "
-    "early just because the reply is getting long.\n"
-    "4. If everything is genuinely complete, or you are blocked and need user "
-    "input, say so explicitly and end the turn."
+    "3. If anything is missing or partial, continue working NOW with tool "
+    "calls, one deliverable at a time. Do not stop early just because the "
+    "reply is getting long.\n"
+    f"4. You may end the turn ONLY when every deliverable verifiably exists: "
+    f"then begin your reply with the exact token {_TASK_COMPLETION_GUARD_MARKER} "
+    "and give a one-paragraph summary.\n"
+    "A text-only reply without that token is treated as unfinished work and "
+    "the turn continues."
 )
+# Consecutive unmarked text-only stops tolerated per stop episode: the model
+# gets this many nudges to either resume work via tools or emit the completion
+# marker before its stop is accepted anyway (bounds the cost of a model that
+# keeps answering plain text, e.g. a genuine clarifying question).
+_TASK_COMPLETION_GUARD_MAX_UNMARKED_STOPS = 2
 # Proactive compaction runs at most this many times per provider call: after a
 # compaction that still leaves the envelope over threshold, the call proceeds
 # and the reactive overflow path stays the backstop.
@@ -6372,10 +6384,10 @@ class Agent:
         text_only_tool_recovery_injections = 0
         text_only_tool_recovery_pending = False
         task_completion_guard_nudges = 0
-        # True while the model has not yet answered the latest guard nudge with
-        # either tool calls (cleared below) or a tool-less reply (accepted as
-        # final). Guarantees at most one nudge per stop episode.
-        task_completion_guard_pending_reply = False
+        # Consecutive tool-less stops since the last tool execution, answered
+        # without the completion marker. Any tool-calling iteration resets it
+        # to zero, so each stop episode earns a fresh pair of nudges.
+        task_completion_guard_unmarked_stops = 0
         plan_run_reconciliation_attempts = 0
         attached_plan_run_id = str(
             getattr(self._tool_context, "plan_run_id", "") or ""
@@ -11528,13 +11540,21 @@ class Agent:
                                 or 0
                             ),
                         )
-                        # A tool-less reply to a previous nudge is accepted as
-                        # final: the model explicitly confirmed completion or
-                        # asked for user input, so nudging again would only
-                        # loop on the same answer.
+                        # Marker protocol: a stop carrying [TASK_COMPLETE] near
+                        # the reply head is an explicit, verified completion
+                        # claim -- accept it. Any other tool-less reply (a bare
+                        # "done", an acknowledgment, or "waiting for your
+                        # instruction") is treated as unfinished work and
+                        # nudged again, up to the per-episode unmarked budget.
+                        guard_marker_zone = visible_text.strip()[:120]
+                        guard_marker_present = (
+                            _TASK_COMPLETION_GUARD_MARKER in guard_marker_zone
+                        )
                         guard_suppressed = (
                             not guard_headroom
-                            or task_completion_guard_pending_reply
+                            or guard_marker_present
+                            or task_completion_guard_unmarked_stops
+                            >= _TASK_COMPLETION_GUARD_MAX_UNMARKED_STOPS
                             or task_completion_guard_nudges >= guard_max_nudges
                         )
                         self.config.metadata["task_completion_guard_detections"] = (
@@ -11544,9 +11564,26 @@ class Agent:
                             )
                             + 1
                         )
+                        if guard_marker_present:
+                            self.config.metadata[
+                                "task_completion_guard_marker_completions"
+                            ] = (
+                                self.config.metadata.get(
+                                    "task_completion_guard_marker_completions",
+                                    0,
+                                )
+                                + 1
+                            )
+                            logger.info(
+                                "task_completion_guard.marker_accepted",
+                                session_key=self._session_key,
+                                iteration=iterations,
+                                provider_call_count=turn_llm_calls,
+                                nudges_used=task_completion_guard_nudges,
+                            )
                         if not guard_suppressed:
                             task_completion_guard_nudges += 1
-                            task_completion_guard_pending_reply = True
+                            task_completion_guard_unmarked_stops += 1
                             # Keep the emitted text: for long writing tasks the
                             # premature "final" message often carries real
                             # content (and was already streamed live); only the
@@ -11574,6 +11611,15 @@ class Agent:
                                 nudge=task_completion_guard_nudges,
                                 max_nudges=guard_max_nudges,
                             )
+                            logger.info(
+                                "task_completion_guard.nudge",
+                                session_key=self._session_key,
+                                iteration=iterations,
+                                provider_call_count=turn_llm_calls,
+                                nudge=task_completion_guard_nudges,
+                                max_nudges=guard_max_nudges,
+                                unmarked_stop=task_completion_guard_unmarked_stops,
+                            )
                             yield WarningEvent(
                                 code="task_completion_guard",
                                 message=(
@@ -11586,10 +11632,10 @@ class Agent:
                     max_iterations_finalization_pending = False
                     post_write_convergence_finalization_pending = False
                     break
-                # Any iteration that produced tool calls answers the guard
-                # nudge with work, so the next tool-less stop earns a fresh
-                # completion check (budget permitting).
-                task_completion_guard_pending_reply = False
+                # Any iteration that produced tool calls is real work, so the
+                # next tool-less stop earns a fresh round of completion nudges
+                # (budget permitting).
+                task_completion_guard_unmarked_stops = 0
                 tool_calls = [self._coerce_meta_tool_call(tc) for tc in tool_calls]
                 tool_calls = self._force_matched_meta_invoke_tool_calls(tool_calls)
 
