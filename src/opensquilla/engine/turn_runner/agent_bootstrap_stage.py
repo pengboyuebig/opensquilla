@@ -482,6 +482,9 @@ class _AgentConfigAuxiliaries:
     text_only_tool_recovery_mode: Literal["off", "log", "warn_model"] | None
     # Gateway ``prompt.finalize_evidence_gate`` (env still overrides).
     finalize_evidence_gate: bool = False
+    # Gateway agent_retry_*_backoff_ms (None keeps the AgentConfig default).
+    agent_retry_base_backoff_ms: int | None = None
+    agent_retry_max_backoff_ms: int | None = None
 
 
 @dataclass(frozen=True)
@@ -999,6 +1002,16 @@ class AgentBootstrapStage:
             tool_timeout=budgets.tool_timeout,
             request_timeout=budgets.request_timeout,
             max_provider_retries=budgets.max_provider_retries,
+            retry_base_backoff_ms=(
+                aux.agent_retry_base_backoff_ms
+                if aux.agent_retry_base_backoff_ms is not None
+                else AgentConfig().retry_base_backoff_ms
+            ),
+            retry_max_backoff_ms=(
+                aux.agent_retry_max_backoff_ms
+                if aux.agent_retry_max_backoff_ms is not None
+                else AgentConfig().retry_max_backoff_ms
+            ),
             length_capped_continuations=(
                 inp.length_capped_continuations
                 if inp.length_capped_continuations is not None

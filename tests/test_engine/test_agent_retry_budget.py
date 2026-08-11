@@ -422,3 +422,63 @@ async def test_post_tool_provider_empty_response_error_retries_once_with_default
         == 1
     )
     assert any(event.kind == "error" and event.code == "empty_response" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_transport_error_retries_until_configured_budget() -> None:
+    """ReadError-classified transport failures keep retrying within budget.
+
+    The provider stream fails three times with a transport error
+    (``Request error: ReadError('')`` -> transport_transient) and succeeds on
+    the fourth call; a 15-retry budget covers all three failures.
+    """
+    transport_failure = [
+        ProviderError(message="Request error: ReadError('')", code="request_error")
+    ]
+    provider = _SequenceProvider(
+        [
+            transport_failure,
+            transport_failure,
+            transport_failure,
+            [ProviderText(text="recovered"), _ok_done()],
+        ]
+    )
+    agent = Agent(
+        provider=provider,
+        config=AgentConfig(
+            max_provider_retries=15,
+            retry_base_backoff_ms=0,
+            retry_max_backoff_ms=0,
+        ),
+    )
+
+    events = [event async for event in agent.run_turn("hello")]
+
+    assert len(provider.calls) == 4
+    assert any(
+        event.kind == "done" and event.text == "recovered" for event in events
+    )
+    assert not any(event.kind == "error" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_transport_error_surfaces_only_after_budget_exhausted() -> None:
+    """The terminal error surfaces only after every configured retry is spent."""
+
+    provider = _SequenceProvider(
+        [[ProviderError(message="Request error: ReadError('')", code="request_error")]]
+    )
+    agent = Agent(
+        provider=provider,
+        config=AgentConfig(
+            max_provider_retries=2,
+            retry_base_backoff_ms=0,
+            retry_max_backoff_ms=0,
+        ),
+    )
+
+    events = [event async for event in agent.run_turn("hello")]
+
+    # 1 initial attempt + 2 budgeted retries, then the error surfaces.
+    assert len(provider.calls) == 3
+    assert any(event.kind == "error" and event.code == "request_error" for event in events)

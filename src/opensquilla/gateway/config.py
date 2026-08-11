@@ -2635,6 +2635,14 @@ class GatewayConfig(BaseSettings):
     # Maximum provider-level retries for transient errors. ``None`` means
     # use the AgentConfig default.
     agent_max_provider_retries: int | None = None
+    # Backoff schedule (milliseconds) between provider retries. ``None``
+    # means use the AgentConfig defaults (base 1000 / cap 30000, exponential
+    # with jitter). Set base == cap (e.g. 30000/30000) for a flat interval.
+    # Negative values are rejected at config load so a misconfiguration can
+    # never reach ``backoff_sleep`` (where ``random.randint(0, base // 2)``
+    # would raise mid-retry and abort an otherwise recoverable turn).
+    agent_retry_base_backoff_ms: int | None = Field(default=None, ge=0)
+    agent_retry_max_backoff_ms: int | None = Field(default=None, ge=0)
     # Agent model/tool loop budget for a single turn. 0 disables this cap.
     agent_max_iterations: int = Field(default=0, ge=0)
     # Source diff preservation protects already-mutated source files from

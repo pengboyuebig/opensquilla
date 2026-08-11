@@ -28,7 +28,7 @@ from opensquilla.engine.turn_runner.agent_bootstrap_stage import (
     _ResolvedCatalog,
 )
 from opensquilla.engine.turn_runner.outcome import StageOutcome
-from opensquilla.engine.types import ThinkingLevel
+from opensquilla.engine.types import AgentConfig, ThinkingLevel
 
 # ---------------------------------------------------------------------------
 # Recording fakes (one per port)
@@ -62,6 +62,8 @@ def _default_aux(
     source_diff_preservation_mode: str | None = "log",
     source_diff_candidate_mode: str | None = "log",
     text_only_tool_recovery_mode: str | None = "off",
+    agent_retry_base_backoff_ms: int | None = None,
+    agent_retry_max_backoff_ms: int | None = None,
 ) -> _AgentConfigAuxiliaries:
     return _AgentConfigAuxiliaries(
         thinking=thinking,
@@ -96,6 +98,8 @@ def _default_aux(
         source_diff_candidate_mode=source_diff_candidate_mode,
         runtime_state_capsule_mode="off",
         text_only_tool_recovery_mode=text_only_tool_recovery_mode,
+        agent_retry_base_backoff_ms=agent_retry_base_backoff_ms,
+        agent_retry_max_backoff_ms=agent_retry_max_backoff_ms,
     )
 
 
@@ -355,6 +359,35 @@ async def test_length_capped_continuations_threads_to_agent_config() -> None:
     out = await stage.run(inp)
 
     assert out.output.agent_config.length_capped_continuations == 3
+
+
+@pytest.mark.asyncio
+async def test_retry_backoff_defaults_thread_to_agent_config() -> None:
+    """Unset gateway backoff fields keep the AgentConfig defaults, so an
+    operator who never sets them gets the shipped exponential schedule."""
+    stage = _make_stage()
+    out = await stage.run(_make_input())
+
+    assert out.output.agent_config.retry_base_backoff_ms == AgentConfig().retry_base_backoff_ms
+    assert out.output.agent_config.retry_max_backoff_ms == AgentConfig().retry_max_backoff_ms
+
+
+@pytest.mark.asyncio
+async def test_retry_backoff_gateway_config_threads_to_agent_config() -> None:
+    """base == cap (30000/30000) from the gateway config reaches the
+    AgentConfig used for the turn's FallbackPolicy."""
+    stage = _make_stage(
+        aux=_RecordingAgentConfigBuilder(
+            aux=_default_aux(
+                agent_retry_base_backoff_ms=30_000,
+                agent_retry_max_backoff_ms=30_000,
+            )
+        )
+    )
+    out = await stage.run(_make_input())
+
+    assert out.output.agent_config.retry_base_backoff_ms == 30_000
+    assert out.output.agent_config.retry_max_backoff_ms == 30_000
 
 
 @pytest.mark.asyncio

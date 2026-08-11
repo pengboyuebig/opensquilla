@@ -794,6 +794,16 @@ class _TurnRunnerAgentConfigBuilderAdapter(AgentConfigBuilderPort):
                     False,
                 )
             ),
+            agent_retry_base_backoff_ms=getattr(
+                runner._config,
+                "agent_retry_base_backoff_ms",
+                None,
+            ),
+            agent_retry_max_backoff_ms=getattr(
+                runner._config,
+                "agent_retry_max_backoff_ms",
+                None,
+            ),
         )
 
 class _TurnRunnerMemorySnapshotAdapter(MemorySnapshotPort):
