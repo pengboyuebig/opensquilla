@@ -59,6 +59,7 @@ from opensquilla.session.storage import (
     SessionStorage,
 )
 from opensquilla.session.tokenizer import estimate_tokens
+from opensquilla.silent_reply import sanitize_historical_silent_reply
 from opensquilla.turn_outcome_projection import (
     attach_fork_terminal_outcome_projection,
     build_fork_terminal_outcome_projection,
@@ -345,21 +346,33 @@ def _successful_submit_plan_input(
 
 
 def _compaction_entry_payloads(entries: list[TranscriptEntry]) -> list[dict[str, Any]]:
-    return [
-        {
-            "id": e.id,
-            "message_id": e.message_id,
-            "role": e.role,
-            "content": e.content or "",
-            "token_count": e.token_count,
-            "tool_calls": e.tool_calls,
-            "tool_call_id": e.tool_call_id,
-            "reasoning_content": e.reasoning_content,
-            "turn_usage": e.turn_usage,
-            "turn_context": e.turn_context,
-        }
-        for e in entries
-    ]
+    payloads: list[dict[str, Any]] = []
+    for entry in entries:
+        silent_reply = sanitize_historical_silent_reply(
+            entry.content or "",
+            entry.tool_calls,
+            role=entry.role,
+            turn_context=entry.turn_context,
+        )
+        # Preserve a strict one-to-one mapping with the durable preimage. The
+        # compactor's removed_count and kept-entry suffix are positional, so a
+        # fully suppressed row projects to empty content instead of being
+        # deleted from this request-scoped view.
+        payloads.append(
+            {
+                "id": entry.id,
+                "message_id": entry.message_id,
+                "role": entry.role,
+                "content": silent_reply.content or "",
+                "token_count": entry.token_count,
+                "tool_calls": silent_reply.segments,
+                "tool_call_id": entry.tool_call_id,
+                "reasoning_content": entry.reasoning_content,
+                "turn_usage": entry.turn_usage,
+                "turn_context": entry.turn_context,
+            }
+        )
+    return payloads
 
 
 def _transcript_preimage(entries: list[TranscriptEntry]) -> tuple[tuple[Any, ...], ...]:
@@ -1149,6 +1162,10 @@ class SessionManager:
         """
         session_key = canonicalize_session_key(session_key)
         self._epoch_cache.pop(session_key, None)
+        goal_service = getattr(self._task_runtime, "goal_service", None)
+        revoke_goal_lease = getattr(goal_service, "revoke_session", None)
+        if callable(revoke_goal_lease):
+            revoke_goal_lease(session_key, session_id=session_id)
         try:
             from opensquilla.gateway.subagent_announce import _tracker as _spawn_tracker
 
@@ -3141,7 +3158,13 @@ class SessionManager:
     async def prune_stale(self, max_age_ms: int) -> int:
         """Delete sessions older than max_age_ms. Returns number pruned."""
         cutoff = _now_ms() - max_age_ms
-        return await self._storage.prune_stale_sessions(cutoff)
+        stale = await self._storage.prune_stale_session_records(cutoff)
+        for session in stale:
+            self.evict_session_runtime_state(
+                session.session_key,
+                session_id=session.session_id,
+            )
+        return len(stale)
 
     async def cap_entries(self, max_entries: int = 500) -> int:
         """Delete oldest sessions beyond max_entries. Returns number deleted."""
@@ -3153,6 +3176,10 @@ class SessionManager:
         to_delete = sorted(sessions, key=lambda s: s.updated_at)[: total - max_entries]
         for s in to_delete:
             await self._storage.delete_session(s.session_key)
+            self.evict_session_runtime_state(
+                s.session_key,
+                session_id=s.session_id,
+            )
         return len(to_delete)
 
     async def archive(self, session_key: str) -> None:

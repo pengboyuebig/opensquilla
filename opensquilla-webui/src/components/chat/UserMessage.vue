@@ -1,7 +1,11 @@
 <template>
   <div
     class="msg-user"
-    :class="{ 'msg-user--share-mode': shareMode, 'msg-user--share-selected': shareSelected }"
+    :class="{
+      'msg-user--share-mode': shareMode,
+      'msg-user--share-selected': shareSelected,
+      'msg-user--steer': !!message.inputDisposition,
+    }"
     :data-message-id="message.messageId"
     :data-share-message-id="shareMessageId"
     :data-share-selected="shareSelected ? 'true' : undefined"
@@ -70,6 +74,10 @@
       <div v-if="message.text" class="msg-user-bubble">
         {{ stripTimePrefix(message.text) }}
       </div>
+      <span v-if="isGoalSource" class="msg-user-goal-origin" role="status">
+        <Icon name="target" :size="14" aria-hidden="true" />
+        {{ t('chat.goal.sentAsGoal') }}
+      </span>
       <span
         v-if="steerStatusLabel"
         class="msg-user-steer-status"
@@ -137,6 +145,7 @@ const props = defineProps<{
   downloadAttachment: (attachment: DisplayAttachment) => Promise<boolean>
   showTurnOutcome?: boolean
   isStreaming?: boolean
+  isGoalSource?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -153,7 +162,7 @@ const { copyState, copyIconName, copyTitle, copyLiveText, onCopyClick } = useCop
 const now = useRelativeNow()
 const timeIso = computed(() => isoTime(props.message.ts))
 const timeAbs = computed(() => absoluteTime(props.message.ts))
-const timeRel = computed(() => relativeTime(props.message.ts, now.value))
+const timeRel = computed(() => relativeTime(props.message.ts, now.value, t))
 const timeFull = computed(() => fullTime(props.message.ts))
 const STEER_WAIT_DETAIL_DELAY_MS = 700
 const showSteerWaitDetail = ref(false)
@@ -341,6 +350,40 @@ function attachmentMeta(attachment: DisplayAttachment): string {
 .msg-user-steer-status {
   display: inline-flex;
   align-items: center;
+  gap: 0.375rem;
+  min-height: 1.25rem;
+  margin-top: -0.0625rem;
+  padding: 0.125rem 0.4375rem;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: 1.3;
+}
+
+.msg-user-steer-status::before {
+  width: 0.3125rem;
+  height: 0.3125rem;
+  flex: 0 0 auto;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--accent) 78%, var(--text));
+  content: "";
+}
+
+.msg-user-steer-status--cancelled,
+.msg-user-steer-status--rejected {
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+}
+
+.msg-user-steer-status--cancelled::before,
+.msg-user-steer-status--rejected::before {
+  background: var(--warn);
+}
+
+.msg-user-goal-origin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
   min-height: 1.25rem;
   padding-inline: 0.25rem;
   color: var(--text-dim);
@@ -409,6 +452,16 @@ function attachmentMeta(attachment: DisplayAttachment): string {
   max-width: 82%;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.msg-user--steer .msg-user-bubble {
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--msg-bubble) 94%, var(--accent) 6%),
+    var(--msg-bubble)
+  );
+  box-shadow: 0 8px 24px -22px color-mix(in srgb, var(--accent) 54%, transparent);
 }
 
 .msg-user-actions {

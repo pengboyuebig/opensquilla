@@ -381,10 +381,28 @@ max_skills_prompt_chars = 8000
 
 [task_runtime]
 # Server-side agent turn queue. Same-session tasks are serialized;
-# different sessions can run concurrently up to this limit.
-max_concurrency = 4
+# different sessions can run concurrently up to this limit. Eight matches the
+# desktop channel budget while keeping provider pressure behind one global queue.
+max_concurrency = 8
 # Waiting tasks per session before new follow-up work is rejected.
 max_pending_per_session = 64
+
+[goal]
+# Session-level `/goal` mode. Automatic continuations still use the ordinary
+# TaskRuntime/TurnRunner, sandbox, approval, provider, and usage-accounting path.
+# Emergency kill switch. When false, no new Goal work starts; unfinished active
+# Goals pause and require an explicit `/goal resume` after this is re-enabled.
+# Default: true.
+# execution_enabled = true
+# Per-resume-window turn guardrail. The current turn is allowed to finish; if it
+# did not complete or block the Goal, the Goal pauses with reason `turn_limit`.
+# Valid range: 1-500. Default: 50.
+# max_turns = 50
+# Per-resume-window active-running-time guardrail. Queue time, paused time, and
+# Gateway downtime do not count. The current turn is allowed to finish; if the
+# Goal is still active, it pauses with reason `runtime_limit`.
+# Valid range: 60-86400 seconds. Default: 3600.
+# runtime_budget_seconds = 3600
 
 [squilla_router]
 enabled = true           # V4 model router

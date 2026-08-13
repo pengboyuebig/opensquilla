@@ -176,6 +176,7 @@ METHOD_SCOPES: dict[str, str] = {
     "skills.list": READ_SCOPE,
     "skills.get": READ_SCOPE,
     "skills.search": READ_SCOPE,
+    "skills.doctor": READ_SCOPE,
     "cron.list": READ_SCOPE,
     "cron.status": READ_SCOPE,
     "cron.runs": READ_SCOPE,
@@ -220,6 +221,14 @@ METHOD_SCOPES: dict[str, str] = {
     "plans.implement": WRITE_SCOPE,
     "plans.revise": WRITE_SCOPE,
     "plans.cancelRun": WRITE_SCOPE,
+    "goals.capabilities": READ_SCOPE,
+    "goals.status": READ_SCOPE,
+    "goals.set": WRITE_SCOPE,
+    "goals.edit": WRITE_SCOPE,
+    "goals.clear": WRITE_SCOPE,
+    "goals.pause": WRITE_SCOPE,
+    "goals.resume": WRITE_SCOPE,
+    "goals.reattach": WRITE_SCOPE,
     "sessions.steer": WRITE_SCOPE,
     "sessions.steer.v2": WRITE_SCOPE,
     "sessions.abort": WRITE_SCOPE,
@@ -240,6 +249,9 @@ METHOD_SCOPES: dict[str, str] = {
     # REMOTE_OPERATOR_SCOPES (no admin) — surfacing as "Failed to delete session"
     # (issues #357, #307).
     "sessions.delete": WRITE_SCOPE,
+    # Display-name-only session rename. Deployment/model rebinding remains on
+    # the separately admin-gated sessions.patch surface.
+    "sessions.rename": WRITE_SCOPE,
     "sessions.promptCacheKeepalive.set": WRITE_SCOPE,
     "sandbox.workspace.set": WRITE_SCOPE,  # OpenSquilla-only; owner-guarded handler.
     "sandbox.mount.add": WRITE_SCOPE,  # OpenSquilla-only; owner-guarded handler.

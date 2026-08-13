@@ -7,6 +7,7 @@ import i18n from '@/i18n'
 import { useToolDetailPreference } from '@/composables/useToolDetailPreference'
 import { clearAssistantActivityExpansionState } from '@/utils/chat/activityDisclosureState'
 import type {
+  ChatMessageMeta,
   ChatRenderedMessage,
   ChatStreamTimelineItem,
   ChatToolCallRenderItem,
@@ -159,6 +160,22 @@ function planPart(): Extract<ChatPart, { type: 'plan' }> {
   }
 }
 
+function usageMeta(overrides: Partial<ChatMessageMeta> = {}): ChatMessageMeta {
+  return {
+    model: 'tokenrhythm/kimi-k2.7-code',
+    modelShort: 'kimi-k2.7-code',
+    input: 4096,
+    output: 128,
+    hasTokens: true,
+    cachedTokens: 512,
+    reasoningTokens: 64,
+    costUsd: 0.012345,
+    hasSaved: false,
+    savedLabel: '',
+    ...overrides,
+  }
+}
+
 function baseMessage(overrides: Partial<ChatRenderedMessage> = {}): ChatRenderedMessage {
   return {
     id: 'assistant-1',
@@ -231,6 +248,219 @@ afterEach(() => {
 })
 
 describe('AssistantMessage activity disclosure', () => {
+  it('uses one expandable completion receipt for a plain turn with usage', async () => {
+    const el = mountMessage(baseMessage({
+      timelineItems: [],
+      parts: [],
+      statusHistory: [],
+      meta: usageMeta(),
+      turnOutcome: {
+        turnId: 'turn-usage',
+        status: 'succeeded',
+        kind: 'completed',
+        startedAt: 1_725_000_000_000,
+        finishedAt: 1_725_000_005_000,
+      },
+    }), true)
+    await nextTick()
+
+    const receipt = el.querySelector<HTMLElement>('.assistant-activity')
+    const answer = el.querySelector<HTMLElement>('.assistant-answer')
+    const summary = receipt?.querySelector<HTMLButtonElement>('.assistant-activity__summary')
+    expect(receipt).not.toBeNull()
+    expect(summary?.textContent).toContain('Completed · 5s')
+    expect(el.querySelector('.turn-outcome')).toBeNull()
+    expect(el.querySelector('.msg-meta__more-btn')).toBeNull()
+    expect(receipt?.querySelector('.turn-usage-details')?.textContent).toContain('kimi-k2.7-code')
+    expect(receipt?.querySelector('.turn-usage-details')?.textContent).toContain('4096')
+    expect(receipt?.querySelector('.turn-usage-details')?.textContent).toContain('128')
+    expect(
+      Boolean(
+        (answer?.compareDocumentPosition(receipt!) ?? 0) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true)
+  })
+
+  it('keeps usage inside the same disclosure as tools and reasoning', async () => {
+    const el = mountMessage(baseMessage({
+      timelineItems: successfulTimeline(),
+      meta: usageMeta(),
+      turnOutcome: {
+        turnId: 'turn-tools-usage',
+        status: 'succeeded',
+        kind: 'completed',
+      },
+    }), true)
+    await nextTick()
+
+    const receipts = el.querySelectorAll('.assistant-activity')
+    expect(receipts).toHaveLength(1)
+    expect(receipts[0]?.querySelector('.turn-usage-details')).not.toBeNull()
+    expect(receipts[0]?.querySelector('.tool-row')).not.toBeNull()
+    expect(el.querySelector('.msg-meta__more-btn')).toBeNull()
+  })
+
+  it('uses the unified receipt for Plan, Goal, and Cron provenance', async () => {
+    for (const overrides of [
+      { parts: [planPart()] },
+      { turnInputMode: 'system_event', turnRunKind: 'goal' },
+      { provenanceKind: 'cron', provenanceSourceTool: 'cron.run' },
+    ] satisfies Partial<ChatRenderedMessage>[]) {
+      const el = mountMessage(baseMessage({
+        timelineItems: [],
+        statusHistory: [],
+        meta: usageMeta(),
+        turnOutcome: {
+          turnId: `turn-${String(overrides.turnRunKind || overrides.provenanceKind || 'plan')}`,
+          status: 'succeeded',
+          kind: 'completed',
+        },
+        ...overrides,
+      }), true)
+      await nextTick()
+
+      expect(el.querySelectorAll('.assistant-activity')).toHaveLength(1)
+      expect(el.querySelector('.turn-usage-details')).not.toBeNull()
+      expect(el.querySelector('.msg-meta__more-btn')).toBeNull()
+      el.remove()
+    }
+  })
+
+  it('keeps usage inspectable under failed and stopped receipts', async () => {
+    for (const outcome of [
+      { turnId: 'turn-failed', status: 'failed', kind: 'failed' },
+      { turnId: 'turn-stopped', status: 'cancelled', kind: 'cancelled' },
+    ]) {
+      const el = mountMessage(baseMessage({
+        timelineItems: [],
+        parts: [],
+        statusHistory: [],
+        meta: usageMeta(),
+        turnOutcome: outcome,
+      }), true)
+      await nextTick()
+
+      expect(el.querySelector('.assistant-activity')).not.toBeNull()
+      expect(el.querySelector('.turn-usage-details')).not.toBeNull()
+      expect(el.querySelector('.msg-meta__more-btn')).toBeNull()
+      el.remove()
+    }
+  })
+
+  it('retains the legacy footer usage entry when history has no turn outcome', async () => {
+    const el = mountMessage(baseMessage({
+      timelineItems: [],
+      parts: [],
+      statusHistory: [],
+      meta: usageMeta(),
+      turnOutcome: undefined,
+    }))
+    await nextTick()
+
+    expect(el.querySelector('.assistant-activity')).toBeNull()
+    expect(el.querySelectorAll('.msg-meta__more-btn')).toHaveLength(1)
+  })
+
+  it('keeps incomplete unknown-only usage honest in the legacy popover', async () => {
+    const el = mountMessage(baseMessage({
+      timelineItems: [],
+      parts: [],
+      statusHistory: [],
+      meta: usageMeta({
+        input: 0,
+        output: 0,
+        hasTokens: false,
+        costUsd: 0,
+        coverageStatus: 'usage_unknown',
+        usageUnknown: true,
+        unknownUsageEvents: 1,
+        hasKnownUsage: false,
+      }),
+      turnOutcome: undefined,
+    }))
+    await nextTick()
+
+    el.querySelector<HTMLButtonElement>('.msg-meta__more-btn')?.click()
+    await nextTick()
+    const coverage = el.querySelector<HTMLElement>('[data-turn-usage-coverage="incomplete"]')
+    expect(coverage?.textContent).toContain('exact usage total unavailable')
+    expect(coverage?.textContent).toContain('1 provider call has unknown usage')
+    expect(el.querySelector('.msg-meta-popover')?.textContent).not.toContain('$0')
+  })
+
+  it('keeps the ensemble summary but hides exact zero cost for unknown-only legacy usage', async () => {
+    const meta = usageMeta({
+      input: 0,
+      output: 0,
+      hasTokens: false,
+      costUsd: 0,
+      coverageStatus: 'usage_unknown',
+      usageUnknown: true,
+      unknownUsageEvents: 1,
+      hasKnownUsage: false,
+    })
+    meta.ensemble = {
+      profile: 'ensemble-review',
+      modelCount: 1,
+      totalCandidates: 1,
+      requestCount: 1,
+      costUsd: 0,
+      fallbackUsed: false,
+      fallbackReason: '',
+      savedUsd: 0,
+      savedPct: 0,
+      models: [{
+        role: 'proposer',
+        label: 'proposer',
+        provider: 'test-provider',
+        model: 'test/model',
+        modelShort: 'model',
+        input: 0,
+        output: 0,
+        costUsd: 0,
+      }],
+    }
+    const el = mountMessage(baseMessage({
+      timelineItems: [],
+      parts: [],
+      statusHistory: [],
+      meta,
+      turnOutcome: undefined,
+    }))
+    await nextTick()
+
+    el.querySelector<HTMLButtonElement>('.msg-meta__more-btn')?.click()
+    await nextTick()
+    const popover = el.querySelector<HTMLElement>('.msg-meta-popover')
+    expect(popover?.textContent).toContain('ensemble-review')
+    expect(popover?.textContent).toContain('exact usage total unavailable')
+    expect(popover?.textContent).not.toContain('$0')
+    expect(el.querySelector('.msg-meta-popover__model-cost')?.textContent?.trim()).toBe('—')
+  })
+
+  it('adds one usage receipt without reordering a canonical-less legacy timeline', async () => {
+    const el = mountMessage(baseMessage({
+      text: '',
+      parts: [],
+      statusHistory: [],
+      meta: usageMeta(),
+      turnOutcome: {
+        turnId: 'turn-legacy-timeline',
+        status: 'succeeded',
+        kind: 'completed',
+      },
+    }), true)
+    await nextTick()
+
+    expect(el.querySelectorAll('.assistant-activity')).toHaveLength(1)
+    expect(el.querySelector('.assistant-activity .turn-usage-details')).not.toBeNull()
+    expect(el.querySelector('.msg-meta__more-btn')).toBeNull()
+    const text = el.textContent || ''
+    expect(text).toContain('Draft prefix')
+    expect(text).toContain('Draft suffix')
+    expect(text.indexOf('Draft prefix')).toBeLessThan(text.indexOf('Draft suffix'))
+  })
+
   it('shows completed in the task-status position for a simple successful turn', async () => {
     const el = mountMessage(baseMessage({
       timelineItems: [],
@@ -292,7 +522,14 @@ describe('AssistantMessage activity disclosure', () => {
     expect(summary?.textContent).not.toContain('Activity ·')
     expect(el.querySelector('.assistant-activity')?.getAttribute('data-share-expanded')).toBe('false')
     expect(el.querySelector('.tool-row')).not.toBeNull()
-    expect(el.querySelector('.assistant-answer--separated')).not.toBeNull()
+    const answer = el.querySelector<HTMLElement>('.assistant-answer')
+    const activity = el.querySelector<HTMLElement>('.assistant-activity')
+    expect(el.querySelector('.assistant-answer--separated')).toBeNull()
+    expect(
+      Boolean(
+        (answer?.compareDocumentPosition(activity!) ?? 0) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true)
   })
 
   it('does not add an answer divider when the message has no activity', async () => {
@@ -696,6 +933,7 @@ describe('AssistantMessage activity disclosure', () => {
     const message = reactive(baseMessage({
       isStreaming: true,
       timelineItems: successfulTimeline(),
+      meta: usageMeta(),
     }))
     const el = mountMessage(message)
     await nextTick()
@@ -704,6 +942,14 @@ describe('AssistantMessage activity disclosure', () => {
       .toBe('true')
     expect(el.querySelector('.assistant-activity__body')?.getAttribute('aria-hidden'))
       .toBe('false')
+    const liveAnswer = el.querySelector<HTMLElement>('.assistant-answer')
+    const liveActivity = el.querySelector<HTMLElement>('.assistant-activity')
+    expect(
+      Boolean(
+        (liveActivity?.compareDocumentPosition(liveAnswer!) ?? 0)
+        & Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true)
 
     message.isStreaming = false
     await nextTick()
@@ -712,6 +958,14 @@ describe('AssistantMessage activity disclosure', () => {
       .toBe('false')
     expect(el.querySelector('.assistant-activity__body')?.getAttribute('aria-hidden'))
       .toBe('true')
+    const settledAnswer = el.querySelector<HTMLElement>('.assistant-answer')
+    const settledActivity = el.querySelector<HTMLElement>('.assistant-activity')
+    expect(
+      Boolean(
+        (settledAnswer?.compareDocumentPosition(settledActivity!) ?? 0)
+        & Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true)
   })
 
   it('does not let the tool-detail preference force the outer activity open', async () => {

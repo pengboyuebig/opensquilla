@@ -36,6 +36,7 @@ import {
 import { segmentsToTimelineItems } from '@/utils/chat/segmentsToTimelineItems'
 import { reconcileTextSnapshot } from '@/utils/chat/foldTurn'
 import { useChatTurnLog } from '@/composables/chat/useChatTurnLog'
+import { isLegacySilentSentinelOnly } from '@/utils/chat/silentSentinels'
 
 export const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 630_000
 const THINKING_DELAY_MS = 400
@@ -45,7 +46,7 @@ const THINKING_TTL_MS = 60000
 // than this (longer than any realistic provider tool run) as skew/garbage.
 const SERVER_CLOCK_TOLERANCE_MS = 5000
 const MAX_TRUSTED_TOOL_AGE_MS = 60 * 60 * 1000
-const SQUILLA_VERBS = ['Planning next step', 'Reading context', 'Waiting for model', 'Preparing output']
+const SQUILLA_VERBS = ['Planning next step', 'Reading context', 'Preparing output']
 
 // Internal phase labels stay English (they double as stable keys for dedup,
 // matching, and the appended status-frame action). Localize only at the display
@@ -53,6 +54,7 @@ const SQUILLA_VERBS = ['Planning next step', 'Reading context', 'Waiting for mod
 // back to their English text.
 const STREAM_LABEL_KEYS: Record<string, string> = {
   Sending: 'chat.stream.sending',
+  Running: 'chat.status.running',
   'Planning next step': 'chat.stream.planningNextStep',
   'Reading context': 'chat.stream.readingContext',
   'Waiting for model': 'chat.stream.waitingForModel',
@@ -149,6 +151,12 @@ export function useChatStream(options: UseChatStreamOptions) {
   // the step chip render as separate elements rather than one packed string.
   const streamPhaseLabel = computed(() => {
     streamActivityTick.value
+    // A queued task is durable but has not acquired a TaskRuntime slot. Keep
+    // that boundary authoritative: local animation timers must not relabel it
+    // as model or router work that has not started.
+    if (options.runStatus?.value.status === 'queued') {
+      return i18n.global.t('chat.status.queued')
+    }
     const now = Date.now()
     if (lastSignalAt.value > 0 && now - lastSignalAt.value > STALE_SIGNAL_MS) {
       // Static on purpose: this feeds a polite live region, so a ticking
@@ -156,16 +164,15 @@ export function useChatStream(options: UseChatStreamOptions) {
       // stall. The aria-hidden elapsed chip carries the seconds instead.
       return i18n.global.t('chat.activity.stale')
     }
-    const startedAt = streamActivity.value.startedAt || now
-    const seconds = Math.max(0, Math.floor((now - startedAt) / 1000))
-    return seconds >= 10 && streamActivity.value.label === 'Planning next step'
-      ? i18n.global.t('chat.stream.stillWaiting')
-      : localizeStreamLabel(streamActivity.value.label)
+    return localizeStreamLabel(streamActivity.value.label)
   })
 
   // Elapsed seconds for the current phase, rendered as its own chip.
   const streamPhaseElapsed = computed(() => {
     streamActivityTick.value
+    // task.queued has no authoritative server timestamp. Do not present the
+    // optimistic browser send clock as durable queue wait time.
+    if (options.runStatus?.value.status === 'queued') return ''
     const now = Date.now()
     if (lastSignalAt.value > 0 && now - lastSignalAt.value > STALE_SIGNAL_MS) {
       // During a stall the phase label is static for screen readers, so the
@@ -313,6 +320,7 @@ export function useChatStream(options: UseChatStreamOptions) {
       source: String(payload.source || 'automatic'),
       durability: String(payload.durability || ''),
       detail: String(payload.detail || payload.phase || ''),
+      reason: String(payload.reason || payload.skip_reason || ''),
     })
     scheduleRender()
   }
@@ -366,8 +374,32 @@ export function useChatStream(options: UseChatStreamOptions) {
     resetStreamIdleTimer()
   }
 
-  function endStreaming(opts?: { reason?: string }) {
+  function endStreaming(opts?: { reason?: string, suppressed?: boolean }) {
     const wasAborted = opts?.reason === 'aborted'
+    const preReconcileText = options.stripDirectiveTags(
+      options.stripGeneratedArtifactMarkers(streamRaw.value),
+    ).trim()
+    // Compatibility for gateways predating the explicit delivery contract.
+    // This only recognizes a response made entirely from standalone boundary
+    // marker lines; mixed substantive text stays canonical and is cleaned only
+    // in the assistant presentation projection.
+    const legacySentinelOnly = !wasAborted
+      && isLegacySilentSentinelOnly(preReconcileText)
+    const suppressText = !wasAborted
+      && (opts?.suppressed === true || legacySentinelOnly)
+    // `delivery=suppressed` is authoritative even if stale text deltas arrived
+    // first. Reconcile to an explicit empty snapshot while leaving tool groups,
+    // artifacts, and interrupts intact. The guard avoids a duplicate final-text
+    // frame when the RPC handler already reconciled the Done receipt.
+    if (
+      suppressText
+      && (
+        streamRaw.value !== ''
+        || streamSegments.value.some(segment => segment.type === 'text')
+      )
+    ) {
+      reconcileFinalText('')
+    }
     hideThinkingIndicator()
     clearStreamActivity()
     clearStreamIdleTimer()
@@ -384,7 +416,6 @@ export function useChatStream(options: UseChatStreamOptions) {
         options.stripGeneratedArtifactMarkers(streamRaw.value),
       ).trim()
 
-      const sentinelOnly = !wasAborted && ['NO_REPLY', 'HEARTBEAT_OK'].includes(cleanedText)
       // After Stop, partial streamed output (text, tool rows, artifacts) is
       // kept; only a bubble with nothing visible at all is dropped.
       const foldedInterrupts = foldedTurn.value.parts.filter(
@@ -395,7 +426,7 @@ export function useChatStream(options: UseChatStreamOptions) {
         && streamArtifacts.value.length === 0
         && streamToolCalls.value.length === 0
         && foldedInterrupts.length === 0
-      if (sentinelOnly || emptyStream) {
+      if (emptyStream) {
         streamBubble.value = false
         isStreaming.value = false
         resetStreamState()

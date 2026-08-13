@@ -499,3 +499,112 @@ async def test_transport_error_surfaces_only_after_budget_exhausted() -> None:
     ]
     assert len(retry_warnings) == 2
     assert "retry 2/2" in retry_warnings[-1].message
+
+
+@pytest.mark.asyncio
+async def test_transport_retry_budget_is_independent_for_each_turn() -> None:
+    """A recovered turn does not consume the next conversation turn's budget."""
+    transport_failure = [
+        ProviderError(message="Request error: ReadError('')", code="request_error")
+    ]
+    provider = _SequenceProvider(
+        [
+            transport_failure,
+            [ProviderText(text="first recovered"), _ok_done()],
+            transport_failure,
+            [ProviderText(text="second recovered"), _ok_done()],
+        ]
+    )
+    agent = Agent(
+        provider=provider,
+        config=AgentConfig(
+            max_provider_retries=2,
+            retry_base_backoff_ms=0,
+            retry_max_backoff_ms=0,
+        ),
+    )
+
+    first_events = [event async for event in agent.run_turn("first")]
+    second_events = [event async for event in agent.run_turn("second")]
+
+    assert len(provider.calls) == 4
+    assert any(event.kind == "done" and event.text == "first recovered" for event in first_events)
+    assert any(event.kind == "done" and event.text == "second recovered" for event in second_events)
+    first_retries = [
+        event for event in first_events
+        if event.kind == "warning" and event.code == "provider_retry"
+    ]
+    second_retries = [
+        event for event in second_events
+        if event.kind == "warning" and event.code == "provider_retry"
+    ]
+    assert len(first_retries) == 1
+    assert len(second_retries) == 1
+    assert "retry 1/2 in 0s" in first_retries[0].message
+    assert "retry 1/2 in 0s" in second_retries[0].message
+
+
+@pytest.mark.asyncio
+async def test_transport_retry_budget_resets_after_successful_tool_call() -> None:
+    """Each provider call after a successful tool boundary gets a fresh budget."""
+    transport_failure = [
+        ProviderError(message="Request error: ReadError('')", code="request_error")
+    ]
+    provider = _SequenceProvider(
+        [
+            transport_failure,
+            [
+                ProviderToolUseStart(tool_use_id="tool-1", tool_name="echo"),
+                ProviderToolUseEnd(
+                    tool_use_id="tool-1",
+                    tool_name="echo",
+                    arguments={"value": "ok"},
+                ),
+                ProviderDone(stop_reason="tool_use", input_tokens=3, output_tokens=1),
+            ],
+            transport_failure,
+            transport_failure,
+            [ProviderText(text="done"), _ok_done()],
+        ]
+    )
+
+    async def tool_handler(call: object) -> ToolResult:
+        return ToolResult(
+            tool_use_id=getattr(call, "tool_use_id"),
+            tool_name=getattr(call, "tool_name"),
+            content="tool ok",
+        )
+
+    agent = Agent(
+        provider=provider,
+        config=AgentConfig(
+            max_iterations=2,
+            max_provider_retries=2,
+            retry_base_backoff_ms=0,
+            retry_max_backoff_ms=0,
+        ),
+        tool_definitions=[
+            ToolDefinition(
+                name="echo",
+                description="Echo.",
+                input_schema=ToolInputSchema(
+                    properties={"value": {"type": "string"}},
+                    required=["value"],
+                ),
+            )
+        ],
+        tool_handler=tool_handler,
+    )
+
+    events = [event async for event in agent.run_turn("hello")]
+
+    assert len(provider.calls) == 5
+    assert any(event.kind == "done" and event.text == "done" for event in events)
+    retry_warnings = [
+        event for event in events
+        if event.kind == "warning" and event.code == "provider_retry"
+    ]
+    assert len(retry_warnings) == 3
+    assert "retry 1/2 in 0s" in retry_warnings[0].message
+    assert "retry 1/2 in 0s" in retry_warnings[1].message
+    assert "retry 2/2 in 0s" in retry_warnings[2].message

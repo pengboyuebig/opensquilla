@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import time
 from typing import Any, cast
 from urllib.parse import quote
@@ -414,6 +415,70 @@ async def _load_chat_history_page(
     return entries, has_more, False, False
 
 
+async def _project_missing_history_usage(
+    mgr: object,
+    session_key: str,
+    entries: list[object],
+) -> list[object]:
+    """Read-time repair for pre-fix assistant rows missing turn usage."""
+
+    missing_by_turn: dict[str, list[int]] = {}
+    turns_with_usage: set[str] = set()
+    for index, entry in enumerate(entries):
+        if getattr(entry, "role", None) != "assistant":
+            continue
+        turn_id = turn_id_from_context(getattr(entry, "turn_context", None))
+        if not turn_id:
+            continue
+        if isinstance(getattr(entry, "turn_usage", None), dict):
+            turns_with_usage.add(turn_id)
+        else:
+            missing_by_turn.setdefault(turn_id, []).append(index)
+    for turn_id in turns_with_usage:
+        missing_by_turn.pop(turn_id, None)
+    if not missing_by_turn:
+        return entries
+
+    storage = getattr(mgr, "storage", None)
+    batch_project = getattr(storage, "get_turn_usage_projections", None)
+    get_session = getattr(mgr, "get_session", None)
+    if not callable(batch_project) or not callable(get_session):
+        return entries
+    try:
+        session = await get_session(session_key)
+        if session is None:
+            return entries
+        projections = await batch_project(
+            session_id=str(getattr(session, "session_id", "") or ""),
+            session_epoch=max(0, int(getattr(session, "epoch", 0) or 0)),
+            turn_ids=list(missing_by_turn),
+        )
+    except Exception:  # noqa: BLE001 - usage fallback must not hide transcript history
+        log.warning(
+            "chat.history.usage_projection_failed",
+            session_key=session_key,
+            entry_count=len(entries),
+            exc_info=True,
+        )
+        return entries
+    if not projections:
+        return entries
+
+    projected = list(entries)
+    for turn_id, indexes in missing_by_turn.items():
+        usage = projections.get(turn_id)
+        if usage is None:
+            continue
+        # A well-formed turn has one assistant row. If damaged legacy history
+        # contains duplicates, attach usage only to its terminal row so the UI
+        # cannot present the same provider spend more than once.
+        index = indexes[-1]
+        entry = copy.copy(projected[index])
+        setattr(entry, "turn_usage", usage)
+        projected[index] = entry
+    return projected
+
+
 async def _chat_history_summaries(
     mgr: object,
     session_key: str,
@@ -731,10 +796,18 @@ async def _handle_chat_abort(params: dict | None, ctx: RpcContext) -> dict:
         "key": session_key,
         "source": raw_params.get("source") or "webui_abort",
     }
+    task_id_present = "taskId" in raw_params or "task_id" in raw_params
     task_id = raw_params.get("taskId") or raw_params.get("task_id")
-    source = str(abort_params["source"])
-    if source != "webui_stop" and isinstance(task_id, str) and task_id.strip():
+    if isinstance(task_id, str) and task_id.strip():
         abort_params["task_id"] = task_id.strip()
+        # chat.abort task ids are always session-bound, even for clients that
+        # predate the explicit scope marker.
+        abort_params["scope"] = "task"
+    elif (
+        task_id_present
+        or str(raw_params.get("scope") or "").strip().lower() == "task"
+    ):
+        abort_params["scope"] = "task"
     result = await _handle_sessions_abort(
         abort_params,
         ctx,
@@ -761,14 +834,18 @@ async def _handle_chat_history(params: dict | None, ctx: RpcContext) -> dict:
     mgr = _require_chat_session_manager(ctx)
 
     async def _load_page() -> tuple[list[object], bool, bool, bool]:
-        return await _load_chat_history_page(
+        entries, has_more, canonical_available, canonical_complete = (
+            await _load_chat_history_page(
             mgr,
             session_key,
             limit=limit,
             before=before,
             after=after,
             include_canonical=include_canonical,
+            )
         )
+        entries = await _project_missing_history_usage(mgr, session_key, entries)
+        return entries, has_more, canonical_available, canonical_complete
 
     try:
         with bounded_interactive_storage_reads():

@@ -20,6 +20,8 @@ GUEST_RPC_ALLOWLIST = frozenset(
         "artifacts.list",
         "artifacts.get",
         "sessions.list",
+        "sessions.rename",
+        "sessions.delete",
         "sessions.bootstrap",
         "sessions.messages.subscribe",
         "sessions.messages.hydrate",
@@ -35,6 +37,7 @@ _SESSION_KEY_FIELDS = {
     "chat.abort": ("sessionKey", "key"),
     "chat.clarify_submit": ("sessionKey", "key"),
     "sessions.bootstrap": ("key", "sessionKey"),
+    "sessions.rename": ("key", "sessionKey"),
     "sessions.messages.subscribe": ("key", "sessionKey"),
     "sessions.messages.hydrate": ("key", "sessionKey"),
     "sessions.messages.snapshot": ("key", "sessionKey"),
@@ -147,6 +150,21 @@ class GuestRpcPolicy:
             normalized["_source"] = normalized_source
             return normalized
 
+        if method == "sessions.delete":
+            if not isinstance(params, dict):
+                raise GuestRpcPolicyError("Guest session key is required")
+            raw_keys = params.get("keys")
+            if raw_keys is None:
+                raw_keys = [params.get("key")]
+            if not isinstance(raw_keys, list) or not raw_keys:
+                raise GuestRpcPolicyError("Guest session key is required")
+            if not all(guest_owns_session_key(owner_id, key) for key in raw_keys):
+                raise GuestRpcPolicyError("Guest session is not owned by this browser")
+            normalized = dict(params)
+            normalized["keys"] = raw_keys
+            normalized.pop("key", None)
+            return normalized
+
         if not isinstance(params, dict):
             raise GuestRpcPolicyError("Guest session key is required")
         fields = _SESSION_KEY_FIELDS[method]
@@ -157,9 +175,10 @@ class GuestRpcPolicy:
         normalized[fields[0]] = key
         for alias in fields[1:]:
             normalized.pop(alias, None)
-        if method == "chat.abort":
-            normalized.pop("taskId", None)
-            normalized.pop("task_id", None)
+        # Keep a guest WebUI's task id only after proving ownership of the
+        # session key. chat.abort binds that id back to this same session in
+        # TaskRuntime; stripping it here would widen a precise Stop into the
+        # legacy whole-session cancellation path.
         return normalized
 
 
