@@ -213,6 +213,48 @@ async def test_guard_never_loops_on_repeated_text_only_replies() -> None:
 
 
 @pytest.mark.asyncio
+async def test_guard_bounds_text_promise_no_progress_tool_cycles() -> None:
+    """Read-only tool calls cannot repeatedly buy fresh completion nudges."""
+
+    provider = _SequenceProvider(
+        [
+            _text_stream("我会继续写下一章。"),
+            _tool_stream("tool-1"),
+            _text_stream("我会继续写下一章。"),
+            _tool_stream("tool-2"),
+            _text_stream("我会继续写下一章。"),
+        ]
+    )
+
+    agent = Agent(
+        provider=provider,
+        config=AgentConfig(
+            task_completion_guard_mode="warn_model",
+            task_completion_guard_max_nudges=8,
+            task_completion_guard_max_unmarked_stops=2,
+            retry_base_backoff_ms=0,
+            retry_max_backoff_ms=0,
+        ),
+        tool_definitions=[_echo_tool()],
+        tool_handler=_tool_handler,
+    )
+
+    events = [event async for event in agent.run_turn("write the volume")]
+
+    assert any(event.kind == "done" for event in events)
+    # The second complete promise -> no-progress-tool -> promise cycle accepts
+    # the stop instead of injecting another nudge and making a sixth call.
+    assert len(provider.calls) == 5
+    guard_warnings = [
+        event
+        for event in events
+        if event.kind == "warning" and event.code == "task_completion_guard"
+    ]
+    assert len(guard_warnings) == 2
+    assert agent.config.metadata["task_completion_guard_nudges"] == 2
+
+
+@pytest.mark.asyncio
 async def test_guard_respects_nudge_budget() -> None:
     provider = _SequenceProvider(
         [

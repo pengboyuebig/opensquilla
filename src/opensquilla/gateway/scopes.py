@@ -252,6 +252,8 @@ METHOD_SCOPES: dict[str, str] = {
     # Display-name-only session rename. Deployment/model rebinding remains on
     # the separately admin-gated sessions.patch surface.
     "sessions.rename": WRITE_SCOPE,
+    # OpenSquilla-only; move a session between project workspaces or back to Recents.
+    "sessions.moveWorkspace": WRITE_SCOPE,
     "sessions.promptCacheKeepalive.set": WRITE_SCOPE,
     "sandbox.workspace.set": WRITE_SCOPE,  # OpenSquilla-only; owner-guarded handler.
     "sandbox.mount.add": WRITE_SCOPE,  # OpenSquilla-only; owner-guarded handler.

@@ -15,6 +15,7 @@ from typing import Any
 from unittest.mock import ANY, AsyncMock
 
 import pytest
+import pytest_asyncio
 from starlette.websockets import WebSocketState
 
 from opensquilla.agents.registry import AgentRegistry
@@ -5383,6 +5384,209 @@ class TestSessionsRename:
         assert res.error.details == {"unexpected_fields": ["model"]}
         assert session.display_name is None
         assert session.model == "original-model"
+
+
+class TestSessionsMoveWorkspace:
+    @staticmethod
+    async def _make_storage_ctx(tmp_path: Path) -> tuple[RpcContext, SessionStorage, Path]:
+        storage = await SessionStorage.open(str(tmp_path / "sessions.db"))
+        manager = SimpleNamespace(storage=storage)
+        ctx = RpcContext(
+            conn_id="move-test",
+            principal=Principal(
+                role="operator",
+                scopes=frozenset(["operator.admin"]),
+                is_owner=True,
+                authenticated=True,
+            ),
+            session_manager=manager,
+            config=GatewayConfig(),
+        )
+        return ctx, storage, tmp_path
+
+    @pytest.mark.asyncio
+    async def test_move_session_to_workspace(self, dispatcher, tmp_path, monkeypatch):
+        ctx, storage, root = await self._make_storage_ctx(tmp_path)
+        try:
+            project = root / "project"
+            project.mkdir()
+            workspace = await storage.create_or_restore_project_workspace(
+                path=str(project.resolve()),
+                path_key=project_path_key(project, strict=True),
+                display_name=project.name,
+                trusted_at=1,
+            )
+            session = SessionNode(
+                session_key="agent:main:session-to-move",
+                agent_id="main",
+            )
+            await storage.upsert_session(session)
+            emitted = _capture_compaction_emits(monkeypatch)
+
+            res = await dispatcher.dispatch(
+                "r1",
+                "sessions.moveWorkspace",
+                {"key": session.session_key, "workspaceId": workspace.workspace_id},
+                ctx,
+            )
+
+            assert res.ok is True
+            assert res.payload == {
+                "key": session.session_key,
+                "workspaceId": workspace.workspace_id,
+            }
+            updated = await storage.get_session(session.session_key)
+            assert updated is not None
+            assert updated.workspace_id == workspace.workspace_id
+            assert updated.updated_at > session.updated_at
+            assert any(
+                name == "sessions.changed" and payload.get("reason") == "workspace_changed"
+                for _, name, payload in emitted
+            )
+        finally:
+            await storage.close()
+
+    @pytest.mark.asyncio
+    async def test_move_session_out_of_workspace(self, dispatcher, tmp_path, monkeypatch):
+        ctx, storage, root = await self._make_storage_ctx(tmp_path)
+        try:
+            project = root / "project"
+            project.mkdir()
+            workspace = await storage.create_or_restore_project_workspace(
+                path=str(project.resolve()),
+                path_key=project_path_key(project, strict=True),
+                display_name=project.name,
+                trusted_at=1,
+            )
+            session = SessionNode(
+                session_key="agent:main:session-to-move-out",
+                agent_id="main",
+                workspace_id=workspace.workspace_id,
+            )
+            await storage.upsert_session(session)
+            emitted = _capture_compaction_emits(monkeypatch)
+
+            res = await dispatcher.dispatch(
+                "r1",
+                "sessions.moveWorkspace",
+                {"key": session.session_key, "workspaceId": None},
+                ctx,
+            )
+
+            assert res.ok is True
+            assert res.payload == {"key": session.session_key, "workspaceId": None}
+            updated = await storage.get_session(session.session_key)
+            assert updated is not None
+            assert updated.workspace_id is None
+            assert updated.updated_at > session.updated_at
+            assert any(
+                name == "sessions.changed" and payload.get("reason") == "workspace_changed"
+                for _, name, payload in emitted
+            )
+        finally:
+            await storage.close()
+
+    @pytest.mark.asyncio
+    async def test_move_session_requires_owner(self, dispatcher, tmp_path):
+        ctx, storage, _ = await self._make_storage_ctx(tmp_path)
+        try:
+            non_owner_ctx = RpcContext(
+                conn_id="move-test-remote",
+                principal=Principal(
+                    role="operator",
+                    scopes=frozenset(["operator.read", "operator.write"]),
+                    is_owner=False,
+                    authenticated=True,
+                ),
+                session_manager=ctx.session_manager,
+                config=GatewayConfig(),
+            )
+            session = SessionNode(
+                session_key="agent:main:session-non-owner",
+                agent_id="main",
+            )
+            await storage.upsert_session(session)
+
+            res = await dispatcher.dispatch(
+                "r1",
+                "sessions.moveWorkspace",
+                {"key": session.session_key, "workspaceId": "ws-1"},
+                non_owner_ctx,
+            )
+
+            assert res.ok is False
+            assert res.error.code == "OWNER_REQUIRED"
+        finally:
+            await storage.close()
+
+    @pytest.mark.asyncio
+    async def test_move_session_rejects_unknown_workspace(self, dispatcher, tmp_path):
+        ctx, storage, _ = await self._make_storage_ctx(tmp_path)
+        try:
+            session = SessionNode(
+                session_key="agent:main:session-bad-ws",
+                agent_id="main",
+            )
+            await storage.upsert_session(session)
+
+            res = await dispatcher.dispatch(
+                "r1",
+                "sessions.moveWorkspace",
+                {"key": session.session_key, "workspaceId": "missing-workspace"},
+                ctx,
+            )
+
+            assert res.ok is False
+            assert res.error.code == "WORKSPACE_NOT_FOUND"
+        finally:
+            await storage.close()
+
+    @pytest.mark.asyncio
+    async def test_move_session_rejects_unknown_session(self, dispatcher, tmp_path):
+        ctx, storage, _ = await self._make_storage_ctx(tmp_path)
+        try:
+            res = await dispatcher.dispatch(
+                "r1",
+                "sessions.moveWorkspace",
+                {"key": "agent:main:no-such-session", "workspaceId": None},
+                ctx,
+            )
+
+            assert res.ok is False
+            assert res.error.code == "NOT_FOUND"
+        finally:
+            await storage.close()
+
+    @pytest.mark.asyncio
+    async def test_move_session_rejects_removed_workspace(self, dispatcher, tmp_path):
+        ctx, storage, root = await self._make_storage_ctx(tmp_path)
+        try:
+            project = root / "removed-project"
+            project.mkdir()
+            workspace = await storage.create_or_restore_project_workspace(
+                path=str(project.resolve()),
+                path_key=project_path_key(project, strict=True),
+                display_name=project.name,
+                trusted_at=1,
+            )
+            await storage.remove_project_workspace(workspace.workspace_id)
+            session = SessionNode(
+                session_key="agent:main:session-removed-ws",
+                agent_id="main",
+            )
+            await storage.upsert_session(session)
+
+            res = await dispatcher.dispatch(
+                "r1",
+                "sessions.moveWorkspace",
+                {"key": session.session_key, "workspaceId": workspace.workspace_id},
+                ctx,
+            )
+
+            assert res.ok is False
+            assert res.error.code == "WORKSPACE_NOT_FOUND"
+        finally:
+            await storage.close()
 
 
 class TestSessionsReset:

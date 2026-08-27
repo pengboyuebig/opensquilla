@@ -88,6 +88,7 @@ const emit = defineEmits<{
   (e: 'delete', key: string): void
   (e: 'bulk-delete', keys: string[]): void
   (e: 'reorder', payload: { draggedKey: string; targetKey: string; position: 'before' | 'after' }): void
+  (e: 'move-to-workspace', payload: { sessionKey: string; workspaceId?: string }): void
   (e: 'session-pin', payload: { key: string; pinned: boolean }): void
   (e: 'new-chat'): void
   (e: 'new-project'): void
@@ -333,6 +334,8 @@ const draggedRowKey = ref('')
 const draggedRowScope = ref('')
 const dropTargetKey = ref('')
 const dropPosition = ref<'before' | 'after'>('before')
+const dropTargetKind = ref<'session' | 'workspace' | 'recents' | null>(null)
+const dropTargetWorkspaceId = ref<string | null>(null)
 const pointerDrag = ref<{
   key: string
   scope: string
@@ -349,6 +352,14 @@ function reorderScope(row: SidebarDisplayRow): string {
 }
 
 function canDragRow(row: SidebarDisplayRow): boolean {
+  return row.rowKind === 'session'
+    && !row.provisional
+    && !selectionMode.value
+    && !agentFilter.value
+    && renamingKey.value !== row.key
+}
+
+function canReorderRow(row: SidebarDisplayRow): boolean {
   return isSidebarSessionOrderable(row)
     && !selectionMode.value
     && !agentFilter.value
@@ -359,6 +370,9 @@ function clearRowDrag() {
   draggedRowKey.value = ''
   draggedRowScope.value = ''
   dropTargetKey.value = ''
+  dropPosition.value = 'before'
+  dropTargetKind.value = null
+  dropTargetWorkspaceId.value = null
   pointerDrag.value = null
 }
 
@@ -389,16 +403,45 @@ useDocumentEvent('pointermove', (event) => {
     draggedRowScope.value = drag.scope
   }
   event.preventDefault()
-  const target = document.elementFromPoint(event.clientX, event.clientY)
-    ?.closest<HTMLElement>('.sidebar-history-row[data-session-key]')
+
+  const sourceRow = findSessionRow(drag.key)
+  const hit = document.elementFromPoint(event.clientX, event.clientY)
+
+  // 1) Drop target: another project workspace header
+  const workspaceEl = hit?.closest<HTMLElement>('.sidebar-history-row--workspace[data-workspace-id]')
+  if (workspaceEl) {
+    const workspaceId = workspaceEl.dataset.workspaceId || ''
+    if (workspaceId && workspaceId !== sourceRow?.workspaceId) {
+      dropTargetKind.value = 'workspace'
+      dropTargetWorkspaceId.value = workspaceId
+      dropTargetKey.value = workspaceEl.dataset.sessionKey || workspaceEl.dataset.workspaceId || ''
+      return
+    }
+  }
+
+  // 2) Drop target: Recents zone heading — move out of current project
+  const recentsEl = hit?.closest<HTMLElement>('.sidebar-zone-heading[data-sidebar-zone-heading="recents"]')
+  if (recentsEl && sourceRow?.workspaceId) {
+    dropTargetKind.value = 'recents'
+    dropTargetWorkspaceId.value = null
+    dropTargetKey.value = 'recents'
+    return
+  }
+
+  // 3) Drop target: reorder within the same scope
+  const target = hit?.closest<HTMLElement>('.sidebar-history-row[data-session-key]')
   const targetKey = target?.dataset.sessionKey || ''
   const row = findSessionRow(targetKey)
-  if (!target || !row || row.key === drag.key || !canDragRow(row) || reorderScope(row) !== drag.scope) {
+  if (!target || !row || row.key === drag.key || !canReorderRow(row) || reorderScope(row) !== drag.scope) {
     dropTargetKey.value = ''
+    dropTargetKind.value = null
+    dropTargetWorkspaceId.value = null
     return
   }
   const rect = target.getBoundingClientRect()
   dropTargetKey.value = row.key
+  dropTargetKind.value = 'session'
+  dropTargetWorkspaceId.value = null
   dropPosition.value = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
 }, { passive: false })
 
@@ -407,7 +450,12 @@ useDocumentEvent('pointerup', () => {
   if (!drag) return
   if (drag.active) {
     suppressSelectKey.value = drag.key
-    if (dropTargetKey.value) {
+    const kind = dropTargetKind.value
+    if (kind === 'workspace' && dropTargetWorkspaceId.value) {
+      emit('move-to-workspace', { sessionKey: drag.key, workspaceId: dropTargetWorkspaceId.value })
+    } else if (kind === 'recents') {
+      emit('move-to-workspace', { sessionKey: drag.key })
+    } else if (kind === 'session' && dropTargetKey.value) {
       emit('reorder', {
         draggedKey: drag.key,
         targetKey: dropTargetKey.value,
@@ -884,6 +932,7 @@ function onSelectRow(row: SidebarConversationItem) {
         <div
           v-if="block.showHeading"
           class="sidebar-zone-heading"
+          :class="{ 'is-drop-target': dropTargetKind === 'recents' && block.zone === 'recents' }"
           :data-sidebar-zone-heading="block.zone"
         >
           <span class="sidebar-zone-heading__label">{{ block.label }}</span>
@@ -956,15 +1005,20 @@ function onSelectRow(row: SidebarConversationItem) {
               'sidebar-history-row--workspace': row.rowKind === 'workspace',
               'sidebar-history-row--workspace-empty': row.rowKind === 'workspace-empty',
               'is-unavailable': row.rowKind === 'workspace' && row.workspaceAvailable === false,
-              'is-reorderable': canDragRow(row),
+              'is-reorderable': canReorderRow(row),
+              'is-draggable': canDragRow(row),
               'is-dragging': draggedRowKey === row.key,
               'is-drop-before': dropTargetKey === row.key && dropPosition === 'before',
               'is-drop-after': dropTargetKey === row.key && dropPosition === 'after',
+              'is-drop-target-workspace': row.rowKind === 'workspace'
+                && dropTargetKind === 'workspace'
+                && dropTargetWorkspaceId === row.workspaceId,
             }"
             :data-family="row.displayFamily"
             :data-sidebar-zone="row.displayZone"
             :data-depth="row.depth"
             :data-session-key="row.rowKind === 'session' ? row.key : undefined"
+            :data-workspace-id="row.rowKind === 'workspace' ? row.workspaceId : undefined"
             :style="{ '--row-depth': row.depth }"
             @pointerdown="onRowPointerDown(row, $event)"
             @mouseenter="openSessionPreview(row, $event)"

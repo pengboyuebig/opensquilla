@@ -94,6 +94,7 @@
       @delete="onDeleteSession"
       @bulk-delete="onBulkDeleteSessions"
       @reorder="onReorderSidebarSession"
+      @move-to-workspace="onMoveSessionToWorkspace"
       @session-pin="onPinSidebarSession"
       @new-chat="startNewChatInstant"
       @new-project="openProjectCreator"
@@ -324,6 +325,16 @@
         :modal-blocked="workbenchModalBlocked"
       />
       <ArtifactImageLightbox />
+      <!-- Browser-local desktop pet. Lives in the global workspace layer so it
+           survives route swaps and KeepAlive boundaries without owning session
+           state; pointer events stay self-contained inside the component.
+           Hidden via Settings → Appearance; badges mirror live task and
+           approval state (visual only — the approval live region speaks). -->
+      <PetCompanion
+        v-if="petVisiblePreference.enabled.value"
+        :busy="hasRunningSessions"
+        :approval-count="appStore.approvalCount"
+      />
     </div>
   </div>
 
@@ -452,6 +463,8 @@ import LanguageSwitcher from './components/LanguageSwitcher.vue'
 import BgmControl from './components/BgmControl.vue'
 import ArtifactImageLightbox from './components/chat/ArtifactImageLightbox.vue'
 import AppWorkbench from './components/workbench/AppWorkbench.vue'
+import PetCompanion from './components/PetCompanion.vue'
+import { usePetVisiblePreference } from './composables/usePetVisiblePreference'
 import { useBgm } from './composables/useBgm'
 import { useDesktopUpdate } from './composables/useDesktopUpdate'
 import { useSidebarLayout } from './composables/useSidebarLayout'
@@ -1039,6 +1052,16 @@ const sidebarSections = computed((): SidebarSection[] => {
   }))
 })
 
+// The pet badge mirrors "some task is queued/running anywhere" — derived from
+// the same sidebar rows the conversation list renders, so both stay in sync.
+const hasRunningSessions = computed(() =>
+  sidebarSections.value.some(section =>
+    section.rows.some(row =>
+      row.rowKind === 'session'
+      && (row.runStatus === 'running' || row.runStatus === 'queued'))))
+
+const petVisiblePreference = usePetVisiblePreference()
+
 function onReorderSidebarSession(payload: {
   draggedKey: string
   targetKey: string
@@ -1056,6 +1079,25 @@ function onReorderSidebarSession(payload: {
   orderedKeys.splice(payload.position === 'after' ? target + 1 : target, 0, payload.draggedKey)
   sidebarSessionOrder.value = orderedKeys
   writeStoredSessionKeys(SIDEBAR_SESSION_ORDER_KEY, orderedKeys)
+}
+
+async function onMoveSessionToWorkspace(payload: { sessionKey: string; workspaceId?: string }) {
+  const { sessionKey, workspaceId } = payload
+  if (!sessionKey) return
+  try {
+    await rpcStore.call('sessions.moveWorkspace', { key: sessionKey, workspaceId })
+    pushToast(
+      workspaceId
+        ? t('shared.sidebar.moveToProjectDone')
+        : t('shared.sidebar.moveToRecentsDone'),
+      { tone: 'ok' },
+    )
+  } catch (err: unknown) {
+    console.warn('[App] sessions.moveWorkspace error:', errorMessage(err))
+    pushToast(t('shared.sidebar.moveToProjectFailed'), { tone: 'danger' })
+  } finally {
+    await loadSessions()
+  }
 }
 
 function onPinSidebarSession(payload: { key: string; pinned: boolean }) {

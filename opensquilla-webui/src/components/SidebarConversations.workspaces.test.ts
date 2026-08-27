@@ -122,6 +122,7 @@ async function mountSidebar(
     projectDeleteHistory: vi.fn(),
     projectRemove: vi.fn(),
     reorder: vi.fn(),
+    moveToWorkspace: vi.fn(),
     sessionPin: vi.fn(),
   }
   const host = document.createElement('div')
@@ -144,6 +145,7 @@ async function mountSidebar(
     onProjectDeleteHistory: events.projectDeleteHistory,
     onProjectRemove: events.projectRemove,
     onReorder: events.reorder,
+    onMoveToWorkspace: events.moveToWorkspace,
     onSessionPin: events.sessionPin,
   }))
   const app = createApp(Root)
@@ -341,7 +343,7 @@ describe('SidebarConversations project workspaces', () => {
     })
   })
 
-  it('only enables non-chat drag after a channel or automation is pinned', async () => {
+  it('keeps non-chat rows draggable, but only marks them reorderable once pinned', async () => {
     const { host } = await mountSidebar([
       taskRow({
         key: 'channel-pin',
@@ -368,11 +370,20 @@ describe('SidebarConversations project workspaces', () => {
       host.querySelector('[data-session-key="channel-pin"]')?.classList.contains('is-reorderable'),
     ).toBe(true)
     expect(
+      host.querySelector('[data-session-key="channel-pin"]')?.classList.contains('is-draggable'),
+    ).toBe(true)
+    expect(
       host.querySelector('[data-session-key="channel-live"]')?.classList.contains('is-reorderable'),
     ).toBe(false)
     expect(
+      host.querySelector('[data-session-key="channel-live"]')?.classList.contains('is-draggable'),
+    ).toBe(true)
+    expect(
       host.querySelector('[data-session-key="cron-live"]')?.classList.contains('is-reorderable'),
     ).toBe(false)
+    expect(
+      host.querySelector('[data-session-key="cron-live"]')?.classList.contains('is-draggable'),
+    ).toBe(true)
   })
 
   it('shows a project session hover card outside the sidebar with its project name', async () => {
@@ -712,6 +723,95 @@ describe('SidebarConversations project workspaces', () => {
       .toContain('Project task')
     expect(host.querySelector('[data-session-key="agent:main:webchat:running"]')?.textContent)
       .toContain('Running')
+  })
+
+  it('emits move-to-workspace when a recent task is dropped on a project header', async () => {
+    const recent = taskRow({
+      key: 'agent:main:webchat:recent',
+      title: 'Recent',
+      depth: 0,
+      workspaceId: undefined,
+    })
+    const { host, events } = await mountSidebar([projectRow(), recent])
+    const source = host.querySelector<HTMLElement>(`[data-session-key="${recent.key}"]`)
+    const target = host.querySelector<HTMLElement>('[data-workspace-id="project-a"]')
+
+    vi.spyOn(document, 'elementFromPoint').mockReturnValue(target || null)
+    source?.dispatchEvent(new MouseEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: 10,
+      clientY: 10,
+    }))
+    document.dispatchEvent(new MouseEvent('pointermove', {
+      bubbles: true,
+      cancelable: true,
+      clientX: 20,
+      clientY: 20,
+    }))
+    document.dispatchEvent(new MouseEvent('pointerup', { bubbles: true }))
+    await nextTick()
+
+    expect(events.reorder).not.toHaveBeenCalled()
+    expect(events.moveToWorkspace).toHaveBeenCalledWith({
+      sessionKey: recent.key,
+      workspaceId: 'project-a',
+    })
+  })
+
+  it('emits move-to-workspace without workspaceId when a project task is dropped on Recents', async () => {
+    const { host, events } = await mountSidebar([projectRow(), taskRow()])
+    const source = host.querySelector<HTMLElement>('[data-session-key="agent:main:webchat:task-a"]')
+    const target = host.querySelector<HTMLElement>('[data-sidebar-zone-heading="recents"]')
+
+    vi.spyOn(document, 'elementFromPoint').mockReturnValue(target || null)
+    source?.dispatchEvent(new MouseEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: 10,
+      clientY: 10,
+    }))
+    document.dispatchEvent(new MouseEvent('pointermove', {
+      bubbles: true,
+      cancelable: true,
+      clientX: 20,
+      clientY: 20,
+    }))
+    document.dispatchEvent(new MouseEvent('pointerup', { bubbles: true }))
+    await nextTick()
+
+    expect(events.reorder).not.toHaveBeenCalled()
+    expect(events.moveToWorkspace).toHaveBeenCalledWith({
+      sessionKey: 'agent:main:webchat:task-a',
+    })
+  })
+
+  it('does not emit move-to-workspace when a task is dropped on its own project header', async () => {
+    const { host, events } = await mountSidebar([projectRow(), taskRow()])
+    const source = host.querySelector<HTMLElement>('[data-session-key="agent:main:webchat:task-a"]')
+    const target = host.querySelector<HTMLElement>('[data-workspace-id="project-a"]')
+
+    vi.spyOn(document, 'elementFromPoint').mockReturnValue(target || null)
+    source?.dispatchEvent(new MouseEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: 10,
+      clientY: 10,
+    }))
+    document.dispatchEvent(new MouseEvent('pointermove', {
+      bubbles: true,
+      cancelable: true,
+      clientX: 20,
+      clientY: 20,
+    }))
+    document.dispatchEvent(new MouseEvent('pointerup', { bubbles: true }))
+    await nextTick()
+
+    expect(events.moveToWorkspace).not.toHaveBeenCalled()
+    expect(events.reorder).not.toHaveBeenCalled()
   })
 
 })

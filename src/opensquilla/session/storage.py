@@ -4390,13 +4390,26 @@ class SessionStorage:
         self,
         session_key: str,
         workspace_id: str | None,
+        *,
+        touch_updated_at: bool = False,
     ) -> None:
         session_key = canonicalize_session_key(session_key)
+        now_ms = int(time.time() * 1000) if touch_updated_at else None
         async with self._write_transaction("bind_session_workspace") as conn:
-            cursor = await conn.execute(
-                "UPDATE sessions SET workspace_id = ? WHERE session_key = ?",
-                (workspace_id, session_key),
-            )
+            if now_ms is not None:
+                cursor = await conn.execute(
+                    """
+                    UPDATE sessions
+                    SET workspace_id = ?, updated_at = ?
+                    WHERE session_key = ?
+                    """,
+                    (workspace_id, now_ms, session_key),
+                )
+            else:
+                cursor = await conn.execute(
+                    "UPDATE sessions SET workspace_id = ? WHERE session_key = ?",
+                    (workspace_id, session_key),
+                )
             if int(cursor.rowcount or 0) == 0:
                 raise KeyError(f"Session not found: {session_key}")
 

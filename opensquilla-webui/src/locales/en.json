@@ -317,7 +317,9 @@
       "sidebarWidthResizableStatus": "Current desktop width: {current}px.",
       "sidebarWidthClampedStatus": "Saved {saved}px; this window currently uses {current}px.",
       "sidebarWidthCompactStatus": "Compact layout uses {current}px. Your desktop preference of {saved}px is preserved.",
-      "sidebarWidthDrawerStatus": "Drawer layout uses {current}px. Your desktop preference of {saved}px is preserved."
+      "sidebarWidthDrawerStatus": "Drawer layout uses {current}px. Your desktop preference of {saved}px is preserved.",
+      "petCompanionLabel": "Show desktop pet",
+      "petCompanionDesc": "A little companion that lives in the corner of the workspace"
     },
     "dataMigration": {
       "title": "Data & backups",
@@ -393,9 +395,18 @@
       "retryFailedTitle": "The preview could not be regenerated",
       "retryFailedDescription": "This regeneration request did not complete. The previous result remains unadopted and no files were changed. Try again or discard the import.",
       "jobStates": {
-        "cancelled": {"title": "Preview generation cancelled", "description": "The isolated source is retained for 24 hours. Regeneration may make at most two model calls because one result that does not pass validation can be retried once; the result may differ."},
-        "interrupted": {"title": "Preview generation interrupted", "description": "OpenSquilla restarted while the model was processing. The isolated source is still available. Regeneration may make at most two model calls because one result that does not pass validation can be retried once."},
-        "failed": {"title": "Preview generation failed", "description": "This attempt did not produce a validated, reviewable preview. No import decisions were adopted and no files were changed. The isolated source was retained; regeneration may make at most two model calls and the result may differ."}
+        "cancelled": {
+          "title": "Preview generation cancelled",
+          "description": "The isolated source is retained for 24 hours. Regeneration may make at most two model calls because one result that does not pass validation can be retried once; the result may differ."
+        },
+        "interrupted": {
+          "title": "Preview generation interrupted",
+          "description": "OpenSquilla restarted while the model was processing. The isolated source is still available. Regeneration may make at most two model calls because one result that does not pass validation can be retried once."
+        },
+        "failed": {
+          "title": "Preview generation failed",
+          "description": "This attempt did not produce a validated, reviewable preview. No import decisions were adopted and no files were changed. The isolated source was retained; regeneration may make at most two model calls and the result may differ."
+        }
       },
       "modelAnalysisTitle": "Model analysis (verify against the file changes)",
       "previewTitle": "Review every file change",
@@ -2449,15 +2460,60 @@
       "galleryEyebrow": "AUTOMATION GALLERY",
       "bulkDeleteConfirm": "Delete {count} selected automation jobs? This cannot be undone.",
       "templates": {
-        "ai-daily": { "title": "Daily AI news briefing", "description": "Summarize important AI news from the last 24 hours with verified source links.", "category": "News & intelligence", "schedule": "Daily at 08:00" },
-        "weekly-report": { "title": "Weekly work review", "description": "Summarize progress, risks, deliverables, and next week’s priorities.", "category": "Productivity", "schedule": "Friday at 17:30" },
-        "english-five": { "title": "Five English words a day", "description": "Create a lightweight vocabulary lesson with examples and a short quiz.", "category": "Learning", "schedule": "Daily at 09:00" },
-        "project-risk": { "title": "Project risk check", "description": "Review delays, errors, and open issues and report risk levels with recommendations.", "category": "Projects", "schedule": "Weekdays at 10:00" },
-        "knowledge-review": { "title": "Weekly knowledge review", "description": "Organize new notes and meeting records and produce a follow-up reading list.", "category": "Knowledge", "schedule": "Sunday at 18:00" },
-        "daily-idea": { "title": "Daily idea and fun fact", "description": "Share one reliable fact and one small, actionable idea.", "category": "Lifestyle", "schedule": "Daily at 12:00" },
-        "bedtime-story": { "title": "Daily bedtime story", "description": "Write a warm, imaginative short story suitable for reading with children.", "category": "Family", "schedule": "Daily at 20:30" },
-        "classic-movie": { "title": "Classic movie recommendation", "description": "Recommend one acclaimed classic film with a spoiler-free introduction.", "category": "Entertainment", "schedule": "Saturday at 19:00" },
-        "today-in-history": { "title": "Today in history", "description": "Select one reliable historical event from science, culture, or society.", "category": "Daily knowledge", "schedule": "Daily at 08:30" }
+        "ai-daily": {
+          "title": "Daily AI news briefing",
+          "description": "Summarize important AI news from the last 24 hours with verified source links.",
+          "category": "News & intelligence",
+          "schedule": "Daily at 08:00"
+        },
+        "weekly-report": {
+          "title": "Weekly work review",
+          "description": "Summarize progress, risks, deliverables, and next week’s priorities.",
+          "category": "Productivity",
+          "schedule": "Friday at 17:30"
+        },
+        "english-five": {
+          "title": "Five English words a day",
+          "description": "Create a lightweight vocabulary lesson with examples and a short quiz.",
+          "category": "Learning",
+          "schedule": "Daily at 09:00"
+        },
+        "project-risk": {
+          "title": "Project risk check",
+          "description": "Review delays, errors, and open issues and report risk levels with recommendations.",
+          "category": "Projects",
+          "schedule": "Weekdays at 10:00"
+        },
+        "knowledge-review": {
+          "title": "Weekly knowledge review",
+          "description": "Organize new notes and meeting records and produce a follow-up reading list.",
+          "category": "Knowledge",
+          "schedule": "Sunday at 18:00"
+        },
+        "daily-idea": {
+          "title": "Daily idea and fun fact",
+          "description": "Share one reliable fact and one small, actionable idea.",
+          "category": "Lifestyle",
+          "schedule": "Daily at 12:00"
+        },
+        "bedtime-story": {
+          "title": "Daily bedtime story",
+          "description": "Write a warm, imaginative short story suitable for reading with children.",
+          "category": "Family",
+          "schedule": "Daily at 20:30"
+        },
+        "classic-movie": {
+          "title": "Classic movie recommendation",
+          "description": "Recommend one acclaimed classic film with a spoiler-free introduction.",
+          "category": "Entertainment",
+          "schedule": "Saturday at 19:00"
+        },
+        "today-in-history": {
+          "title": "Today in history",
+          "description": "Select one reliable historical event from science, culture, or society.",
+          "category": "Daily knowledge",
+          "schedule": "Daily at 08:30"
+        }
       }
     },
     "deleteDialog": {
@@ -2579,39 +2635,39 @@
       "fdChannel": "A channel",
       "fdWebhook": "A webhook",
       "enabled": "Enabled",
-      "saveSchedule": "Save schedule"
-      ,"friendlyNamePlaceholder": "For example: Organize customer feedback every day"
-      ,"friendlyTypeCron": "Repeat at a scheduled time"
-      ,"friendlyTypeEvery": "Repeat at a fixed interval"
-      ,"friendlyTypeAt": "Run once at a specified time"
-      ,"executionFrequency": "Frequency"
-      ,"daily": "Daily"
-      ,"weekdays": "Weekdays"
-      ,"weekly": "Weekly"
-      ,"monthly": "Monthly"
-      ,"customAdvancedTime": "Custom advanced schedule"
-      ,"weekday": "Day of week"
-      ,"date": "Date"
-      ,"monthlyDay": "Day {day} of each month"
-      ,"specificTime": "Time"
-      ,"customTimeHint": "Use a more flexible schedule rule."
-      ,"openAdvancedTime": "Open advanced schedule"
-      ,"everyHowOften": "Repeat every"
-      ,"timeUnit": "Time unit"
-      ,"minutes": "Minutes"
-      ,"hours": "Hours"
-      ,"days": "Days"
-      ,"dateAndTime": "Date and time"
-      ,"friendlyMessagePlaceholder": "For example: Summarize today's customer feedback and suggest next steps"
-      ,"moreRuntimeSettings": "More runtime settings (optional)"
-      ,"advancedTimeHint": "Use this only when the schedule picker above is not flexible enough."
-      ,"timezoneSimpleHint": "Usually you do not need to change this."
-      ,"projectWorkspace": "Project workspace"
-      ,"defaultWorkspace": "Use the default workspace"
-      ,"noWorkspace": "No project workspace"
-      ,"workspaceUnavailable": "{name} (unavailable)"
-      ,"workspaceRequiredHint": "Choose the project this task should inspect. The task will read and work only in that project."
-      ,"workspaceOptionalHint": "Optional. Choose “No project workspace” for general tasks, or select a project when the task needs its files."
+      "saveSchedule": "Save schedule",
+      "friendlyNamePlaceholder": "For example: Organize customer feedback every day",
+      "friendlyTypeCron": "Repeat at a scheduled time",
+      "friendlyTypeEvery": "Repeat at a fixed interval",
+      "friendlyTypeAt": "Run once at a specified time",
+      "executionFrequency": "Frequency",
+      "daily": "Daily",
+      "weekdays": "Weekdays",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "customAdvancedTime": "Custom advanced schedule",
+      "weekday": "Day of week",
+      "date": "Date",
+      "monthlyDay": "Day {day} of each month",
+      "specificTime": "Time",
+      "customTimeHint": "Use a more flexible schedule rule.",
+      "openAdvancedTime": "Open advanced schedule",
+      "everyHowOften": "Repeat every",
+      "timeUnit": "Time unit",
+      "minutes": "Minutes",
+      "hours": "Hours",
+      "days": "Days",
+      "dateAndTime": "Date and time",
+      "friendlyMessagePlaceholder": "For example: Summarize today's customer feedback and suggest next steps",
+      "moreRuntimeSettings": "More runtime settings (optional)",
+      "advancedTimeHint": "Use this only when the schedule picker above is not flexible enough.",
+      "timezoneSimpleHint": "Usually you do not need to change this.",
+      "projectWorkspace": "Project workspace",
+      "defaultWorkspace": "Use the default workspace",
+      "noWorkspace": "No project workspace",
+      "workspaceUnavailable": "{name} (unavailable)",
+      "workspaceRequiredHint": "Choose the project this task should inspect. The task will read and work only in that project.",
+      "workspaceOptionalHint": "Optional. Choose “No project workspace” for general tasks, or select a project when the task needs its files."
     },
     "form": {
       "cronPreviewPlaceholder": "Enter a 5-field cron expression to preview",
@@ -3252,7 +3308,14 @@
       "targetLabel": "Provider / model",
       "lastHitLabel": "Last cached tokens",
       "autoPauseLabel": "Auto-pause",
-      "states": { "off": "Off", "waiting": "Waiting for a stable prefix", "scheduled": "Scheduled", "probing": "Probing", "paused": "Idle limit reached; waiting for the next message", "stopped": "Stopped after a miss or error" }
+      "states": {
+        "off": "Off",
+        "waiting": "Waiting for a stable prefix",
+        "scheduled": "Scheduled",
+        "probing": "Probing",
+        "paused": "Idle limit reached; waiting for the next message",
+        "stopped": "Stopped after a miss or error"
+      }
     },
     "send": "Send",
     "sendQueues": "Send (queues for after current response)",
@@ -3354,7 +3417,7 @@
     "audioUnsupported": "This browser cannot play this audio format. Download the file instead.",
     "playVideo": "Play video",
     "videoLoadFailed": "Video could not be loaded.",
-    "videoUnsupported": "This browser cannot play this video format. Download the file instead.",
+    "videoUnsupported": "This browser cannot play this video. Download it instead.",
     "previewOf": "Preview: {title}",
     "closePreview": "Close preview",
     "previousImage": "Previous image",
@@ -3363,7 +3426,6 @@
     "previewDownload": "Preview download",
     "previewTimedOut": "Preview timed out.",
     "previewFailed": "Preview failed to load.",
-    "videoUnsupported": "This browser cannot play this video. Download it instead.",
     "loadVideoPreview": "Load video preview",
     "loadVideoPreviewFor": "Load video preview for {title}",
     "videoPreviewLoading": "Loading the video preview. You can cancel while it downloads.",
@@ -4112,7 +4174,10 @@
       "bulkDeleteConfirm": "Delete selected",
       "bulkDeleteDone": "Deleted {count} tasks",
       "bulkDeletePartial": "{count} tasks failed to delete",
-      "bulkDeleteFailed": "Failed to delete selected tasks"
+      "bulkDeleteFailed": "Failed to delete selected tasks",
+      "moveToProjectDone": "Task moved to project",
+      "moveToRecentsDone": "Task moved out of project",
+      "moveToProjectFailed": "Failed to move task"
     },
     "setupBanner": {
       "ariaLabel": "Gateway setup needed",
@@ -4201,5 +4266,40 @@
       "copyFailed": "Could not copy the command",
       "copyLabel": "Copy the gateway restart command"
     }
+  },
+  "pet": {
+    "name": "Squilla",
+    "panelLabel": "Pet companion status",
+    "statusLabel": "Pet companion: open status panel",
+    "levelLabel": "Lv. {level}",
+    "xpBarLabel": "Experience progress",
+    "xpLabel": "{into} / {needed} XP to next level",
+    "xpMaxed": "Max level reached",
+    "feed": "Feed",
+    "followOn": "Follow cursor",
+    "followOff": "Stop following",
+    "hungerTimeHours": "Fed. Hungry in {hours} h {minutes} min",
+    "hungerTimeMinutes": "Fed. Hungry in {minutes} min",
+    "hungerStarved": "Starved… Revive to bring it back.",
+    "revive": "Revive",
+    "hungerLabel": "Food",
+    "waterLabel": "Water",
+    "restLabel": "Energy",
+    "drink": "Give water",
+    "rest": "Let it rest",
+    "stateFull": "All good",
+    "thirstyNow": "Thirsty — give water",
+    "tiredNow": "Tired — needs rest",
+    "feedCooldown": "Recently fed — try again later",
+    "moodThirsty": "I am thirsty… give me water?",
+    "moodHungry": "My tummy is rumbling…",
+    "moodTired": "So sleepy… time to rest?",
+    "moodHappy": "All good — happy to keep you company!",
+    "levelUp": "Level up! Now Lv. {level}",
+    "renameLabel": "Rename your pet",
+    "reset": "Start over",
+    "resetConfirmTitle": "Start over with this pet?",
+    "resetConfirmBody": "Level, experience, position and care history will be wiped. This cannot be undone.",
+    "resetConfirmPrimary": "Start over"
   }
 }

@@ -317,7 +317,9 @@
       "sidebarWidthResizableStatus": "Aktuelle Desktop-Breite: {current}px.",
       "sidebarWidthClampedStatus": "Gespeichert sind {saved}px; dieses Fenster verwendet derzeit {current}px.",
       "sidebarWidthCompactStatus": "Das kompakte Layout verwendet {current}px. Deine Desktop-Einstellung von {saved}px bleibt erhalten.",
-      "sidebarWidthDrawerStatus": "Das Schubladenlayout verwendet {current}px. Deine Desktop-Einstellung von {saved}px bleibt erhalten."
+      "sidebarWidthDrawerStatus": "Das Schubladenlayout verwendet {current}px. Deine Desktop-Einstellung von {saved}px bleibt erhalten.",
+      "petCompanionLabel": "Desktop-Haustier anzeigen",
+      "petCompanionDesc": "Ein kleiner Begleiter in der Ecke des Arbeitsbereichs"
     },
     "dataMigration": {
       "title": "Daten & Sicherungen",
@@ -393,9 +395,18 @@
       "retryFailedTitle": "Die Vorschau konnte nicht neu erstellt werden",
       "retryFailedDescription": "Diese Anfrage zur erneuten Erstellung wurde nicht abgeschlossen. Das vorherige Ergebnis bleibt unberücksichtigt und es wurden keine Dateien geändert. Versuchen Sie es erneut oder verwerfen Sie den Import.",
       "jobStates": {
-        "cancelled": {"title": "Vorschauerstellung abgebrochen", "description": "Die isolierte Quelle bleibt 24 Stunden erhalten. Die erneute Erstellung kann höchstens zwei Modellaufrufe ausführen, da ein nicht validiertes Ergebnis einmal wiederholt werden kann; das Ergebnis kann abweichen."},
-        "interrupted": {"title": "Vorschauerstellung unterbrochen", "description": "OpenSquilla wurde während der Modellverarbeitung neu gestartet. Die isolierte Quelle bleibt verfügbar. Die erneute Erstellung kann durch eine interne Wiederholung höchstens zwei Modellaufrufe ausführen."},
-        "failed": {"title": "Vorschauerstellung fehlgeschlagen", "description": "Dieser Versuch hat keine validierte, prüfbare Vorschau erzeugt. Es wurden keine Importentscheidungen übernommen und keine Dateien geändert. Die isolierte Quelle wurde beibehalten; die erneute Erstellung kann höchstens zwei Modellaufrufe ausführen."}
+        "cancelled": {
+          "title": "Vorschauerstellung abgebrochen",
+          "description": "Die isolierte Quelle bleibt 24 Stunden erhalten. Die erneute Erstellung kann höchstens zwei Modellaufrufe ausführen, da ein nicht validiertes Ergebnis einmal wiederholt werden kann; das Ergebnis kann abweichen."
+        },
+        "interrupted": {
+          "title": "Vorschauerstellung unterbrochen",
+          "description": "OpenSquilla wurde während der Modellverarbeitung neu gestartet. Die isolierte Quelle bleibt verfügbar. Die erneute Erstellung kann durch eine interne Wiederholung höchstens zwei Modellaufrufe ausführen."
+        },
+        "failed": {
+          "title": "Vorschauerstellung fehlgeschlagen",
+          "description": "Dieser Versuch hat keine validierte, prüfbare Vorschau erzeugt. Es wurden keine Importentscheidungen übernommen und keine Dateien geändert. Die isolierte Quelle wurde beibehalten; die erneute Erstellung kann höchstens zwei Modellaufrufe ausführen."
+        }
       },
       "modelAnalysisTitle": "Modellanalyse (mit den Dateiänderungen abgleichen)",
       "previewTitle": "Jede Dateiänderung prüfen",
@@ -461,42 +472,93 @@
       "available": "Sicherer Modus verfügbar",
       "unavailable": "Sicherer Modus nicht verfügbar",
       "builtin": "Integriert",
-      "actions": { "add": "Hinzufügen", "remove": "Entfernen", "retry": "Erneut versuchen", "copy": "Kopieren", "saving": "Speichern…", "redetect": "Erneut prüfen" },
+      "actions": {
+        "add": "Hinzufügen",
+        "remove": "Entfernen",
+        "retry": "Erneut versuchen",
+        "copy": "Kopieren",
+        "saving": "Speichern…",
+        "redetect": "Erneut prüfen"
+      },
       "mode": {
-        "title": "Standardzugriffsmodus", "description": "Startmodus für neue Aufgaben. Safe bleibt bei fehlgeschlagener Prüfung nicht auswählbar.",
-        "default": "Standardmodus", "safe": "Safe", "full": "Vollzugriff", "resetWarning": "Warnung beim Start wieder anzeigen"
+        "title": "Standardzugriffsmodus",
+        "description": "Startmodus für neue Aufgaben. Safe bleibt bei fehlgeschlagener Prüfung nicht auswählbar.",
+        "default": "Standardmodus",
+        "safe": "Safe",
+        "full": "Vollzugriff",
+        "resetWarning": "Warnung beim Start wieder anzeigen"
       },
       "setup": {
-        "title": "Safe-Modus einrichten", "description": "OpenSquilla benötigt einmalig eine Administratorfreigabe, um ein isoliertes Konto sowie Datei- und Netzwerkschutz einzurichten.", "descriptionWithDuration": "OpenSquilla benötigt einmalig eine Administratorfreigabe, um ein isoliertes Konto und Schutzmaßnahmen einzurichten. Die Ersteinrichtung dauert normalerweise etwa 20–30 Sekunden. Lassen Sie OpenSquilla geöffnet.",
-        "continue": "Weiter", "configuring": "Wird eingerichtet…", "requestingApproval": "Bestätigen Sie die Windows-Abfrage, um fortzufahren.", "configuringProtection": "OpenSquilla richtet den Safe-Modus fertig ein. Lassen Sie die App geöffnet.", "takingLonger": "Die Ersteinrichtung kann einige Minuten dauern. Die Überprüfung läuft automatisch.", "elapsed": "{seconds} s vergangen", "cancelled": "Einrichtung abgebrochen. Der Vollzugriff bleibt unverändert; Sie können es jederzeit erneut versuchen.",
-        "failed": "Safe-Modus konnte nicht eingerichtet werden. Der Vollzugriff bleibt unverändert.", "verificationFailed": "Die Einrichtung ist fertig, aber die Sicherheitsprüfung ist fehlgeschlagen. Der Vollzugriff bleibt unverändert.",
-        "runInBackground": "Im Hintergrund einrichten", "readyToast": "Der Safe-Modus ist bereit.", "failedToast": "Die Einrichtung des Safe-Modus konnte nicht abgeschlossen werden. Versuchen Sie es erneut über den Safe-Modus."
+        "title": "Safe-Modus einrichten",
+        "description": "OpenSquilla benötigt einmalig eine Administratorfreigabe, um ein isoliertes Konto sowie Datei- und Netzwerkschutz einzurichten.",
+        "descriptionWithDuration": "OpenSquilla benötigt einmalig eine Administratorfreigabe, um ein isoliertes Konto und Schutzmaßnahmen einzurichten. Die Ersteinrichtung dauert normalerweise etwa 20–30 Sekunden. Lassen Sie OpenSquilla geöffnet.",
+        "continue": "Weiter",
+        "configuring": "Wird eingerichtet…",
+        "requestingApproval": "Bestätigen Sie die Windows-Abfrage, um fortzufahren.",
+        "configuringProtection": "OpenSquilla richtet den Safe-Modus fertig ein. Lassen Sie die App geöffnet.",
+        "takingLonger": "Die Ersteinrichtung kann einige Minuten dauern. Die Überprüfung läuft automatisch.",
+        "elapsed": "{seconds} s vergangen",
+        "cancelled": "Einrichtung abgebrochen. Der Vollzugriff bleibt unverändert; Sie können es jederzeit erneut versuchen.",
+        "failed": "Safe-Modus konnte nicht eingerichtet werden. Der Vollzugriff bleibt unverändert.",
+        "verificationFailed": "Die Einrichtung ist fertig, aber die Sicherheitsprüfung ist fehlgeschlagen. Der Vollzugriff bleibt unverändert.",
+        "runInBackground": "Im Hintergrund einrichten",
+        "readyToast": "Der Safe-Modus ist bereit.",
+        "failedToast": "Die Einrichtung des Safe-Modus konnte nicht abgeschlossen werden. Versuchen Sie es erneut über den Safe-Modus."
       },
       "files": {
-        "title": "Dateisicherheit", "description": "Normale Dateien sind lesbar. Änderungen an geschützten Pfaden erfordern eine Freigabe.", "readsAllowed": "Lesen erlaubt",
-        "customPath": "Eigener geschützter Pfad", "pathPlaceholder": "Geschützten Pfad hinzufügen", "backupTitle": "Vor destruktiven Dateiänderungen sichern",
-        "backupDescription": "Vor dem Löschen oder Ändern vorhandener Dateien wiederherstellbare Kopien anlegen und bei Bedarf die ältesten automatisch entfernen.", "quota": "Backup-Speicherlimit",
+        "title": "Dateisicherheit",
+        "description": "Normale Dateien sind lesbar. Änderungen an geschützten Pfaden erfordern eine Freigabe.",
+        "readsAllowed": "Lesen erlaubt",
+        "customPath": "Eigener geschützter Pfad",
+        "pathPlaceholder": "Geschützten Pfad hinzufügen",
+        "backupTitle": "Vor destruktiven Dateiänderungen sichern",
+        "backupDescription": "Vor dem Löschen oder Ändern vorhandener Dateien wiederherstellbare Kopien anlegen und bei Bedarf die ältesten automatisch entfernen.",
+        "quota": "Backup-Speicherlimit",
         "recursiveWarning": "Ohne Backup können Löschen und Ersetzen unwiederbringlich sein. Schlägt das Backup nach dem Entfernen alter Kopien weiter fehl, fragt OpenSquilla vor dem Fortfahren erneut."
       },
       "commands": {
-        "title": "Befehlssicherheit", "description": "Befehle laufen standardmäßig automatisch. Riskante Aktionen wie git push brauchen eine Freigabe.",
-        "systemTools": "Systemwerkzeuge", "systemToolsAuto": "Automatisch erlauben", "systemToolsPrompt": "Vorher fragen", "systemToolsDisabled": "Deaktiviert",
-        "approvalPrefixes": "Befehlspräfixe mit Freigabe", "autoPrefixes": "Immer automatisch erlaubte Präfixe", "prefixPlaceholder": "Zum Beispiel: git push"
+        "title": "Befehlssicherheit",
+        "description": "Befehle laufen standardmäßig automatisch. Riskante Aktionen wie git push brauchen eine Freigabe.",
+        "systemTools": "Systemwerkzeuge",
+        "systemToolsAuto": "Automatisch erlauben",
+        "systemToolsPrompt": "Vorher fragen",
+        "systemToolsDisabled": "Deaktiviert",
+        "approvalPrefixes": "Befehlspräfixe mit Freigabe",
+        "autoPrefixes": "Immer automatisch erlaubte Präfixe",
+        "prefixPlaceholder": "Zum Beispiel: git push"
       },
       "network": {
-        "title": "Netzwerksicherheit", "description": "Öffentlicher Netzwerkzugriff ist standardmäßig erlaubt; SSRF- und Metadatenschutz bleiben aktiv.",
-        "blockAll": "Gesamten Netzwerkzugriff sperren", "blockAllDescription": "Erlaubte Domains bleiben Ausnahmen.", "allowDomains": "Erlaubte Domains", "denyDomains": "Gesperrte Domains"
+        "title": "Netzwerksicherheit",
+        "description": "Öffentlicher Netzwerkzugriff ist standardmäßig erlaubt; SSRF- und Metadatenschutz bleiben aktiv.",
+        "blockAll": "Gesamten Netzwerkzugriff sperren",
+        "blockAllDescription": "Erlaubte Domains bleiben Ausnahmen.",
+        "allowDomains": "Erlaubte Domains",
+        "denyDomains": "Gesperrte Domains"
       },
-      "runtimes": { "title": "Mitgelieferte Laufzeiten", "description": "Sicher nutzt zuerst mitgelieferte Werkzeuge; Vollzugriff zuerst Host-Werkzeuge.", "target": "Paket-Ziel" },
+      "runtimes": {
+        "title": "Mitgelieferte Laufzeiten",
+        "description": "Sicher nutzt zuerst mitgelieferte Werkzeuge; Vollzugriff zuerst Host-Werkzeuge.",
+        "target": "Paket-Ziel"
+      },
       "lan": {
-        "listen": "Im lokalen Netzwerk lauschen", "listenDescription": "Nach einem Neustart an alle lokalen Schnittstellen binden; öffentliche Peers bleiben gesperrt.",
-        "allowedCidrs": "Erlaubte Client-CIDRs", "cidrDescription": "Optional. Leer erlaubt Loopback, RFC1918 und IPv6 ULA; Einträge können den Bereich nur einschränken.",
+        "listen": "Im lokalen Netzwerk lauschen",
+        "listenDescription": "Nach einem Neustart an alle lokalen Schnittstellen binden; öffentliche Peers bleiben gesperrt.",
+        "allowedCidrs": "Erlaubte Client-CIDRs",
+        "cidrDescription": "Optional. Leer erlaubt Loopback, RFC1918 und IPv6 ULA; Einträge können den Bereich nur einschränken.",
         "restartRequired": "OpenSquilla neu starten, um die Änderung anzuwenden.",
-        "title": "Web-Zugriff und benannte Tokens", "description": "Entfernter Web-Zugriff ohne gültiges Token nutzt den Gast-Sicherheitsmodus; benannte Tokens vergeben die konfigurierte Berechtigung.",
-        "guest": "Kein oder ungültiges Token:", "guestDescription": " Gast-Sicherheitsmodus: Normale Dateien sind lesbar, nur der Standard-Arbeitsbereich ist beschreibbar und Anmeldedateien sind nicht lesbar.",
-        "authenticated": "Gültiges Token:", "authenticatedDescription": " je nach Berechtigung Sicher oder Vollzugriff.",
-        "tokenName": "Token-Name, z. B. Laptop", "hostExecute": "Host-Ausführung / Vollzugriff erlauben", "createToken": "Token erstellen",
-        "copyNow": "Jetzt kopieren. Das Token wird nicht erneut angezeigt.", "fullCapable": "Sicher und Vollzugriff", "safeOnly": "Nur Sicher", "revoke": "Widerrufen"
+        "title": "Web-Zugriff und benannte Tokens",
+        "description": "Entfernter Web-Zugriff ohne gültiges Token nutzt den Gast-Sicherheitsmodus; benannte Tokens vergeben die konfigurierte Berechtigung.",
+        "guest": "Kein oder ungültiges Token:",
+        "guestDescription": " Gast-Sicherheitsmodus: Normale Dateien sind lesbar, nur der Standard-Arbeitsbereich ist beschreibbar und Anmeldedateien sind nicht lesbar.",
+        "authenticated": "Gültiges Token:",
+        "authenticatedDescription": " je nach Berechtigung Sicher oder Vollzugriff.",
+        "tokenName": "Token-Name, z. B. Laptop",
+        "hostExecute": "Host-Ausführung / Vollzugriff erlauben",
+        "createToken": "Token erstellen",
+        "copyNow": "Jetzt kopieren. Das Token wird nicht erneut angezeigt.",
+        "fullCapable": "Sicher und Vollzugriff",
+        "safeOnly": "Nur Sicher",
+        "revoke": "Widerrufen"
       }
     },
     "dialog": {
@@ -2398,15 +2460,60 @@
       "galleryEyebrow": "AUTOMATISIERUNGSVORLAGEN",
       "bulkDeleteConfirm": "{count} ausgewählte Automatisierungen löschen? Dies kann nicht rückgängig gemacht werden.",
       "templates": {
-        "ai-daily": { "title": "Täglicher KI-Nachrichtenüberblick", "description": "Fasst wichtige KI-Nachrichten der letzten 24 Stunden mit geprüften Quellen zusammen.", "category": "Nachrichten", "schedule": "Täglich um 08:00" },
-        "weekly-report": { "title": "Wöchentlicher Arbeitsrückblick", "description": "Fasst Fortschritte, Risiken, Ergebnisse und Prioritäten der nächsten Woche zusammen.", "category": "Produktivität", "schedule": "Freitag um 17:30" },
-        "english-five": { "title": "Fünf englische Wörter täglich", "description": "Erstellt eine kurze Vokabellektion mit Beispielen und Quiz.", "category": "Lernen", "schedule": "Täglich um 09:00" },
-        "project-risk": { "title": "Projektrisiken prüfen", "description": "Prüft Verzögerungen, Fehler und offene Punkte und schlägt Maßnahmen vor.", "category": "Projekte", "schedule": "Werktags um 10:00" },
-        "knowledge-review": { "title": "Wöchentlicher Wissensrückblick", "description": "Ordnet neue Notizen und Besprechungen und erstellt eine Nachbereitungsliste.", "category": "Wissen", "schedule": "Sonntag um 18:00" },
-        "daily-idea": { "title": "Tägliche Idee und Wissenshäppchen", "description": "Teilt eine verlässliche Tatsache und eine kleine umsetzbare Idee.", "category": "Alltag", "schedule": "Täglich um 12:00" },
-        "bedtime-story": { "title": "Tägliche Gute-Nacht-Geschichte", "description": "Schreibt eine warme, fantasievolle Kurzgeschichte für Familien.", "category": "Familie", "schedule": "Täglich um 20:30" },
-        "classic-movie": { "title": "Klassische Filmempfehlung", "description": "Empfiehlt einen anerkannten Filmklassiker ohne Spoiler.", "category": "Unterhaltung", "schedule": "Samstag um 19:00" },
-        "today-in-history": { "title": "Heute in der Geschichte", "description": "Stellt ein verlässliches historisches Ereignis aus Wissenschaft, Kultur oder Gesellschaft vor.", "category": "Tägliches Wissen", "schedule": "Täglich um 08:30" }
+        "ai-daily": {
+          "title": "Täglicher KI-Nachrichtenüberblick",
+          "description": "Fasst wichtige KI-Nachrichten der letzten 24 Stunden mit geprüften Quellen zusammen.",
+          "category": "Nachrichten",
+          "schedule": "Täglich um 08:00"
+        },
+        "weekly-report": {
+          "title": "Wöchentlicher Arbeitsrückblick",
+          "description": "Fasst Fortschritte, Risiken, Ergebnisse und Prioritäten der nächsten Woche zusammen.",
+          "category": "Produktivität",
+          "schedule": "Freitag um 17:30"
+        },
+        "english-five": {
+          "title": "Fünf englische Wörter täglich",
+          "description": "Erstellt eine kurze Vokabellektion mit Beispielen und Quiz.",
+          "category": "Lernen",
+          "schedule": "Täglich um 09:00"
+        },
+        "project-risk": {
+          "title": "Projektrisiken prüfen",
+          "description": "Prüft Verzögerungen, Fehler und offene Punkte und schlägt Maßnahmen vor.",
+          "category": "Projekte",
+          "schedule": "Werktags um 10:00"
+        },
+        "knowledge-review": {
+          "title": "Wöchentlicher Wissensrückblick",
+          "description": "Ordnet neue Notizen und Besprechungen und erstellt eine Nachbereitungsliste.",
+          "category": "Wissen",
+          "schedule": "Sonntag um 18:00"
+        },
+        "daily-idea": {
+          "title": "Tägliche Idee und Wissenshäppchen",
+          "description": "Teilt eine verlässliche Tatsache und eine kleine umsetzbare Idee.",
+          "category": "Alltag",
+          "schedule": "Täglich um 12:00"
+        },
+        "bedtime-story": {
+          "title": "Tägliche Gute-Nacht-Geschichte",
+          "description": "Schreibt eine warme, fantasievolle Kurzgeschichte für Familien.",
+          "category": "Familie",
+          "schedule": "Täglich um 20:30"
+        },
+        "classic-movie": {
+          "title": "Klassische Filmempfehlung",
+          "description": "Empfiehlt einen anerkannten Filmklassiker ohne Spoiler.",
+          "category": "Unterhaltung",
+          "schedule": "Samstag um 19:00"
+        },
+        "today-in-history": {
+          "title": "Heute in der Geschichte",
+          "description": "Stellt ein verlässliches historisches Ereignis aus Wissenschaft, Kultur oder Gesellschaft vor.",
+          "category": "Tägliches Wissen",
+          "schedule": "Täglich um 08:30"
+        }
       }
     },
     "deleteDialog": {
@@ -2528,39 +2635,39 @@
       "fdChannel": "Ein Kanal",
       "fdWebhook": "Ein Webhook",
       "enabled": "Aktiviert",
-      "saveSchedule": "Zeitplan speichern"
-      ,"friendlyNamePlaceholder": "Beispiel: Kundenfeedback täglich zusammenfassen"
-      ,"friendlyTypeCron": "Zu einer festen Zeit wiederholen"
-      ,"friendlyTypeEvery": "In festem Abstand wiederholen"
-      ,"friendlyTypeAt": "Einmal zu einer bestimmten Zeit ausführen"
-      ,"executionFrequency": "Häufigkeit"
-      ,"daily": "Täglich"
-      ,"weekdays": "Werktags"
-      ,"weekly": "Wöchentlich"
-      ,"monthly": "Monatlich"
-      ,"customAdvancedTime": "Erweiterter Zeitplan"
-      ,"weekday": "Wochentag"
-      ,"date": "Datum"
-      ,"monthlyDay": "Jeden Monat am {day}."
-      ,"specificTime": "Uhrzeit"
-      ,"customTimeHint": "Verwenden Sie eine flexiblere Zeitregel."
-      ,"openAdvancedTime": "Erweiterten Zeitplan öffnen"
-      ,"everyHowOften": "Wiederholen alle"
-      ,"timeUnit": "Zeiteinheit"
-      ,"minutes": "Minuten"
-      ,"hours": "Stunden"
-      ,"days": "Tage"
-      ,"dateAndTime": "Datum und Uhrzeit"
-      ,"friendlyMessagePlaceholder": "Beispiel: Heutiges Kundenfeedback zusammenfassen und nächste Schritte vorschlagen"
-      ,"moreRuntimeSettings": "Weitere Ausführungseinstellungen (optional)"
-      ,"advancedTimeHint": "Nur verwenden, wenn die obige Zeitauswahl nicht ausreicht."
-      ,"timezoneSimpleHint": "Normalerweise ist keine Änderung erforderlich."
-      ,"projectWorkspace": "Projekt-Arbeitsbereich"
-      ,"defaultWorkspace": "Standard-Arbeitsbereich verwenden"
-      ,"noWorkspace": "Kein Projekt-Arbeitsbereich"
-      ,"workspaceUnavailable": "{name} (nicht verfügbar)"
-      ,"workspaceRequiredHint": "Wählen Sie das zu prüfende Projekt. Die Aufgabe arbeitet ausschließlich in diesem Projekt."
-      ,"workspaceOptionalHint": "Optional. Wählen Sie für allgemeine Aufgaben „Kein Projekt-Arbeitsbereich“ oder ein Projekt, wenn dessen Dateien benötigt werden."
+      "saveSchedule": "Zeitplan speichern",
+      "friendlyNamePlaceholder": "Beispiel: Kundenfeedback täglich zusammenfassen",
+      "friendlyTypeCron": "Zu einer festen Zeit wiederholen",
+      "friendlyTypeEvery": "In festem Abstand wiederholen",
+      "friendlyTypeAt": "Einmal zu einer bestimmten Zeit ausführen",
+      "executionFrequency": "Häufigkeit",
+      "daily": "Täglich",
+      "weekdays": "Werktags",
+      "weekly": "Wöchentlich",
+      "monthly": "Monatlich",
+      "customAdvancedTime": "Erweiterter Zeitplan",
+      "weekday": "Wochentag",
+      "date": "Datum",
+      "monthlyDay": "Jeden Monat am {day}.",
+      "specificTime": "Uhrzeit",
+      "customTimeHint": "Verwenden Sie eine flexiblere Zeitregel.",
+      "openAdvancedTime": "Erweiterten Zeitplan öffnen",
+      "everyHowOften": "Wiederholen alle",
+      "timeUnit": "Zeiteinheit",
+      "minutes": "Minuten",
+      "hours": "Stunden",
+      "days": "Tage",
+      "dateAndTime": "Datum und Uhrzeit",
+      "friendlyMessagePlaceholder": "Beispiel: Heutiges Kundenfeedback zusammenfassen und nächste Schritte vorschlagen",
+      "moreRuntimeSettings": "Weitere Ausführungseinstellungen (optional)",
+      "advancedTimeHint": "Nur verwenden, wenn die obige Zeitauswahl nicht ausreicht.",
+      "timezoneSimpleHint": "Normalerweise ist keine Änderung erforderlich.",
+      "projectWorkspace": "Projekt-Arbeitsbereich",
+      "defaultWorkspace": "Standard-Arbeitsbereich verwenden",
+      "noWorkspace": "Kein Projekt-Arbeitsbereich",
+      "workspaceUnavailable": "{name} (nicht verfügbar)",
+      "workspaceRequiredHint": "Wählen Sie das zu prüfende Projekt. Die Aufgabe arbeitet ausschließlich in diesem Projekt.",
+      "workspaceOptionalHint": "Optional. Wählen Sie für allgemeine Aufgaben „Kein Projekt-Arbeitsbereich“ oder ein Projekt, wenn dessen Dateien benötigt werden."
     },
     "form": {
       "cronPreviewPlaceholder": "Geben Sie einen Cron-Ausdruck mit 5 Feldern ein, um eine Vorschau zu sehen",
@@ -3197,9 +3304,18 @@
       "planTitle": "Erhaltungsplan",
       "planSummary": "Etwa alle {interval} Min. · bis zu ca. {count} Anfragen · Pause nach {duration} Min.",
       "costWarning": "Echte Provider-Anfragen können Token-Kosten verursachen; sie erscheinen nicht im Chat und führen keine Tools aus.",
-      "statusLabel": "Status", "targetLabel": "Provider / Modell", "lastHitLabel": "Zuletzt gecachte Tokens",
+      "statusLabel": "Status",
+      "targetLabel": "Provider / Modell",
+      "lastHitLabel": "Zuletzt gecachte Tokens",
       "autoPauseLabel": "Automatische Pause",
-      "states": { "off": "Aus", "waiting": "Wartet auf stabilen Präfix", "scheduled": "Geplant", "probing": "Prüfung läuft", "paused": "Leerlauflimit erreicht; wartet auf nächste Nachricht", "stopped": "Nach Fehlschlag gestoppt" }
+      "states": {
+        "off": "Aus",
+        "waiting": "Wartet auf stabilen Präfix",
+        "scheduled": "Geplant",
+        "probing": "Prüfung läuft",
+        "paused": "Leerlauflimit erreicht; wartet auf nächste Nachricht",
+        "stopped": "Nach Fehlschlag gestoppt"
+      }
     },
     "send": "Senden",
     "sendQueues": "Senden (wird nach der aktuellen Antwort in die Warteschlange gestellt)",
@@ -3301,7 +3417,7 @@
     "audioUnsupported": "Dieser Browser kann dieses Audioformat nicht abspielen. Laden Sie die Datei stattdessen herunter.",
     "playVideo": "Video abspielen",
     "videoLoadFailed": "Video konnte nicht geladen werden.",
-    "videoUnsupported": "Dieser Browser kann dieses Videoformat nicht abspielen. Laden Sie die Datei stattdessen herunter.",
+    "videoUnsupported": "Dieser Browser kann dieses Video nicht wiedergeben. Laden Sie es stattdessen herunter.",
     "previewOf": "Vorschau: {title}",
     "closePreview": "Vorschau schließen",
     "previousImage": "Vorheriges Bild",
@@ -3310,7 +3426,6 @@
     "previewDownload": "Vorschau herunterladen",
     "previewTimedOut": "Zeitüberschreitung bei der Vorschau.",
     "previewFailed": "Vorschau konnte nicht geladen werden.",
-    "videoUnsupported": "Dieser Browser kann dieses Video nicht wiedergeben. Laden Sie es stattdessen herunter.",
     "loadVideoPreview": "Videovorschau laden",
     "loadVideoPreviewFor": "Videovorschau für {title} laden",
     "videoPreviewLoading": "Die Videovorschau wird geladen. Sie können den Download abbrechen.",
@@ -4059,7 +4174,10 @@
       "bulkDeleteConfirm": "Ausgewählte löschen",
       "bulkDeleteDone": "{count} Sitzungen gelöscht",
       "bulkDeletePartial": "{count} Sitzungen konnten nicht gelöscht werden",
-      "bulkDeleteFailed": "Ausgewählte Sitzungen konnten nicht gelöscht werden"
+      "bulkDeleteFailed": "Ausgewählte Sitzungen konnten nicht gelöscht werden",
+      "moveToProjectDone": "Task moved to project",
+      "moveToRecentsDone": "Task moved out of project",
+      "moveToProjectFailed": "Failed to move task"
     },
     "setupBanner": {
       "ariaLabel": "Gateway-Einrichtung erforderlich",
@@ -4148,5 +4266,40 @@
       "copyFailed": "Befehl konnte nicht kopiert werden",
       "copyLabel": "Gateway-Neustart-Befehl kopieren"
     }
+  },
+  "pet": {
+    "name": "Squilla",
+    "panelLabel": "Status des Haustier-Begleiters",
+    "statusLabel": "Haustier-Begleiter: Statuspaneel öffnen",
+    "levelLabel": "Stufe {level}",
+    "xpBarLabel": "Erfahrungsfortschritt",
+    "xpLabel": "{into} / {needed} XP bis zur nächsten Stufe",
+    "xpMaxed": "Maximale Stufe erreicht",
+    "feed": "Füttern",
+    "followOn": "Cursor folgen",
+    "followOff": "Nicht mehr folgen",
+    "hungerTimeHours": "Gesättigt. Hunger in {hours} Std. {minutes} Min.",
+    "hungerTimeMinutes": "Gesättigt. Hunger in {minutes} Min.",
+    "hungerStarved": "Verhungert … Belebe es wieder, um es zurückzuholen.",
+    "revive": "Wiederbeleben",
+    "hungerLabel": "Futter",
+    "waterLabel": "Wasser",
+    "restLabel": "Energie",
+    "drink": "Wasser geben",
+    "rest": "Ausruhen lassen",
+    "stateFull": "Topfit",
+    "thirstyNow": "Durstig — Wasser geben",
+    "tiredNow": "Müde — braucht Ruhe",
+    "feedCooldown": "Kürzlich gefüttert — später erneut versuchen",
+    "moodThirsty": "Ich habe Durst… gibst du mir Wasser?",
+    "moodHungry": "Mein Magen knurrt…",
+    "moodTired": "So müde… Zeit für eine Pause?",
+    "moodHappy": "Alles top — ich begleite dich gern!",
+    "levelUp": "Stufenaufstieg! Jetzt Lv. {level}",
+    "renameLabel": "Haustier umbenennen",
+    "reset": "Von vorn beginnen",
+    "resetConfirmTitle": "Mit diesem Haustier von vorn beginnen?",
+    "resetConfirmBody": "Level, Erfahrung, Position und Pflegeverlauf werden gelöscht. Nicht widerrufbar.",
+    "resetConfirmPrimary": "Von vorn beginnen"
   }
 }

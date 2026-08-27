@@ -317,7 +317,9 @@
       "sidebarWidthResizableStatus": "当前桌面端宽度：{current}px。",
       "sidebarWidthClampedStatus": "已保存 {saved}px；当前窗口使用 {current}px。",
       "sidebarWidthCompactStatus": "紧凑布局使用 {current}px。已保留桌面端偏好 {saved}px。",
-      "sidebarWidthDrawerStatus": "抽屉布局使用 {current}px。已保留桌面端偏好 {saved}px。"
+      "sidebarWidthDrawerStatus": "抽屉布局使用 {current}px。已保留桌面端偏好 {saved}px。",
+      "petCompanionLabel": "显示桌面宠物",
+      "petCompanionDesc": "一只待在工作区角落的小宠物"
     },
     "dataMigration": {
       "title": "数据与备份",
@@ -393,9 +395,18 @@
       "retryFailedTitle": "未能重新生成预览",
       "retryFailedDescription": "本次重新生成请求未成功。上一次处理结果仍未被采纳，也没有修改文件；可以再次尝试或丢弃导入。",
       "jobStates": {
-        "cancelled": {"title": "已取消生成预览", "description": "隔离原文会保留 24 小时。重新生成时若首个结果未通过校验，会自动重试一次，因此最多调用模型两次，结果可能不同。"},
-        "interrupted": {"title": "预览生成已中断", "description": "模型处理期间 OpenSquilla 发生重启。隔离原文仍可用；重新生成时若首个结果未通过校验，会自动重试一次，因此最多调用模型两次。"},
-        "failed": {"title": "本次预览生成失败", "description": "本次处理没有生成通过校验且可核对的预览。未采纳任何导入判断，也未修改任何文件。隔离原文已保留；重新生成最多调用模型两次，结果可能不同。"}
+        "cancelled": {
+          "title": "已取消生成预览",
+          "description": "隔离原文会保留 24 小时。重新生成时若首个结果未通过校验，会自动重试一次，因此最多调用模型两次，结果可能不同。"
+        },
+        "interrupted": {
+          "title": "预览生成已中断",
+          "description": "模型处理期间 OpenSquilla 发生重启。隔离原文仍可用；重新生成时若首个结果未通过校验，会自动重试一次，因此最多调用模型两次。"
+        },
+        "failed": {
+          "title": "本次预览生成失败",
+          "description": "本次处理没有生成通过校验且可核对的预览。未采纳任何导入判断，也未修改任何文件。隔离原文已保留；重新生成最多调用模型两次，结果可能不同。"
+        }
       },
       "modelAnalysisTitle": "模型分析（请以文件差异为准）",
       "previewTitle": "核对每一处文件变更",
@@ -2449,15 +2460,60 @@
       "galleryEyebrow": "自动化模板库",
       "bulkDeleteConfirm": "确定删除选中的 {count} 个自动化任务吗？此操作无法撤销。",
       "templates": {
-        "ai-daily": { "title": "每日 AI 资讯简报", "description": "检索过去 24 小时的重要 AI 新闻，去重并生成带来源链接的简报。", "category": "资讯与情报", "schedule": "每天 08:00" },
-        "weekly-report": { "title": "每周工作复盘", "description": "汇总本周任务与交付，提炼进展、风险和下周优先事项。", "category": "效率办公", "schedule": "每周五 17:30" },
-        "english-five": { "title": "每天 5 个英语单词", "description": "结合例句与小测验，生成轻量、可坚持的英语学习卡片。", "category": "学习成长", "schedule": "每天 09:00" },
-        "project-risk": { "title": "项目风险巡检", "description": "检查延期事项、异常日志与待处理问题，输出风险等级和建议。", "category": "项目研发", "schedule": "工作日 10:00" },
-        "knowledge-review": { "title": "知识库周回顾", "description": "整理本周新增笔记与会议纪要，补充标签并生成待消化清单。", "category": "知识管理", "schedule": "每周日 18:00" },
-        "daily-idea": { "title": "每日灵感与冷知识", "description": "每天送上一条可靠、有出处的知识和一个可行动的小灵感。", "category": "轻松生活", "schedule": "每天 12:00" },
-        "bedtime-story": { "title": "每日儿童睡前故事", "description": "生成一篇温暖、有启发、适合亲子共读的短篇故事。", "category": "亲子陪伴", "schedule": "每天 20:30" },
-        "classic-movie": { "title": "经典电影推荐", "description": "每周推荐一部高质量经典电影，并附无剧透导读。", "category": "休闲娱乐", "schedule": "每周六 19:00" },
-        "today-in-history": { "title": "历史上的今天", "description": "从科技、文化与社会领域挑选一件可靠的历史事件。", "category": "每日知识", "schedule": "每天 08:30" }
+        "ai-daily": {
+          "title": "每日 AI 资讯简报",
+          "description": "检索过去 24 小时的重要 AI 新闻，去重并生成带来源链接的简报。",
+          "category": "资讯与情报",
+          "schedule": "每天 08:00"
+        },
+        "weekly-report": {
+          "title": "每周工作复盘",
+          "description": "汇总本周任务与交付，提炼进展、风险和下周优先事项。",
+          "category": "效率办公",
+          "schedule": "每周五 17:30"
+        },
+        "english-five": {
+          "title": "每天 5 个英语单词",
+          "description": "结合例句与小测验，生成轻量、可坚持的英语学习卡片。",
+          "category": "学习成长",
+          "schedule": "每天 09:00"
+        },
+        "project-risk": {
+          "title": "项目风险巡检",
+          "description": "检查延期事项、异常日志与待处理问题，输出风险等级和建议。",
+          "category": "项目研发",
+          "schedule": "工作日 10:00"
+        },
+        "knowledge-review": {
+          "title": "知识库周回顾",
+          "description": "整理本周新增笔记与会议纪要，补充标签并生成待消化清单。",
+          "category": "知识管理",
+          "schedule": "每周日 18:00"
+        },
+        "daily-idea": {
+          "title": "每日灵感与冷知识",
+          "description": "每天送上一条可靠、有出处的知识和一个可行动的小灵感。",
+          "category": "轻松生活",
+          "schedule": "每天 12:00"
+        },
+        "bedtime-story": {
+          "title": "每日儿童睡前故事",
+          "description": "生成一篇温暖、有启发、适合亲子共读的短篇故事。",
+          "category": "亲子陪伴",
+          "schedule": "每天 20:30"
+        },
+        "classic-movie": {
+          "title": "经典电影推荐",
+          "description": "每周推荐一部高质量经典电影，并附无剧透导读。",
+          "category": "休闲娱乐",
+          "schedule": "每周六 19:00"
+        },
+        "today-in-history": {
+          "title": "历史上的今天",
+          "description": "从科技、文化与社会领域挑选一件可靠的历史事件。",
+          "category": "每日知识",
+          "schedule": "每天 08:30"
+        }
       }
     },
     "deleteDialog": {
@@ -2579,39 +2635,39 @@
       "fdChannel": "一个渠道",
       "fdWebhook": "一个 webhook",
       "enabled": "已启用",
-      "saveSchedule": "保存定时任务"
-      ,"friendlyNamePlaceholder": "例如：每天整理客户反馈"
-      ,"friendlyTypeCron": "按固定时间重复"
-      ,"friendlyTypeEvery": "每隔一段时间执行"
-      ,"friendlyTypeAt": "只在指定时间执行一次"
-      ,"executionFrequency": "执行频率"
-      ,"daily": "每天"
-      ,"weekdays": "每个工作日"
-      ,"weekly": "每周"
-      ,"monthly": "每月"
-      ,"customAdvancedTime": "自定义高级时间"
-      ,"weekday": "星期"
-      ,"date": "日期"
-      ,"monthlyDay": "每月 {day} 日"
-      ,"specificTime": "具体时间"
-      ,"customTimeHint": "可输入更灵活的时间规则。"
-      ,"openAdvancedTime": "打开高级时间设置"
-      ,"everyHowOften": "每隔多久执行"
-      ,"timeUnit": "时间单位"
-      ,"minutes": "分钟"
-      ,"hours": "小时"
-      ,"days": "天"
-      ,"dateAndTime": "执行日期和时间"
-      ,"friendlyMessagePlaceholder": "例如：整理今天收到的客户反馈，归纳主要问题并给出处理建议"
-      ,"moreRuntimeSettings": "更多运行设置（可选）"
-      ,"advancedTimeHint": "仅在上面的时间选择无法满足需求时使用。"
-      ,"timezoneSimpleHint": "通常无需修改。"
-      ,"projectWorkspace": "项目空间"
-      ,"defaultWorkspace": "使用默认工作区"
-      ,"noWorkspace": "无项目空间"
-      ,"workspaceUnavailable": "{name}（不可用）"
-      ,"workspaceRequiredHint": "请选择该任务要检查的项目。任务只会在所选项目中读取和处理文件。"
-      ,"workspaceOptionalHint": "可选。通用任务可选择“无项目空间”；需要读取项目文件时请选择对应项目。"
+      "saveSchedule": "保存定时任务",
+      "friendlyNamePlaceholder": "例如：每天整理客户反馈",
+      "friendlyTypeCron": "按固定时间重复",
+      "friendlyTypeEvery": "每隔一段时间执行",
+      "friendlyTypeAt": "只在指定时间执行一次",
+      "executionFrequency": "执行频率",
+      "daily": "每天",
+      "weekdays": "每个工作日",
+      "weekly": "每周",
+      "monthly": "每月",
+      "customAdvancedTime": "自定义高级时间",
+      "weekday": "星期",
+      "date": "日期",
+      "monthlyDay": "每月 {day} 日",
+      "specificTime": "具体时间",
+      "customTimeHint": "可输入更灵活的时间规则。",
+      "openAdvancedTime": "打开高级时间设置",
+      "everyHowOften": "每隔多久执行",
+      "timeUnit": "时间单位",
+      "minutes": "分钟",
+      "hours": "小时",
+      "days": "天",
+      "dateAndTime": "执行日期和时间",
+      "friendlyMessagePlaceholder": "例如：整理今天收到的客户反馈，归纳主要问题并给出处理建议",
+      "moreRuntimeSettings": "更多运行设置（可选）",
+      "advancedTimeHint": "仅在上面的时间选择无法满足需求时使用。",
+      "timezoneSimpleHint": "通常无需修改。",
+      "projectWorkspace": "项目空间",
+      "defaultWorkspace": "使用默认工作区",
+      "noWorkspace": "无项目空间",
+      "workspaceUnavailable": "{name}（不可用）",
+      "workspaceRequiredHint": "请选择该任务要检查的项目。任务只会在所选项目中读取和处理文件。",
+      "workspaceOptionalHint": "可选。通用任务可选择“无项目空间”；需要读取项目文件时请选择对应项目。"
     },
     "form": {
       "cronPreviewPlaceholder": "输入 5 字段的 cron 表达式以预览",
@@ -3252,7 +3308,14 @@
       "targetLabel": "供应商 / 模型",
       "lastHitLabel": "上次缓存命中 token",
       "autoPauseLabel": "自动暂停",
-      "states": { "off": "已关闭", "waiting": "等待稳定前缀", "scheduled": "已计划", "probing": "正在探测", "paused": "空闲超时，等待下一条消息", "stopped": "未命中或出错后已停止" }
+      "states": {
+        "off": "已关闭",
+        "waiting": "等待稳定前缀",
+        "scheduled": "已计划",
+        "probing": "正在探测",
+        "paused": "空闲超时，等待下一条消息",
+        "stopped": "未命中或出错后已停止"
+      }
     },
     "send": "发送",
     "sendQueues": "发送（排队等待当前回复结束）",
@@ -3354,7 +3417,7 @@
     "audioUnsupported": "此浏览器无法播放这种音频格式，请改为下载文件。",
     "playVideo": "播放视频",
     "videoLoadFailed": "无法加载视频。",
-    "videoUnsupported": "此浏览器无法播放这种视频格式，请改为下载文件。",
+    "videoUnsupported": "此浏览器无法播放该视频。请改为下载。",
     "previewOf": "预览：{title}",
     "closePreview": "关闭预览",
     "previousImage": "上一张图片",
@@ -3363,7 +3426,6 @@
     "previewDownload": "预览下载",
     "previewTimedOut": "预览超时。",
     "previewFailed": "预览加载失败。",
-    "videoUnsupported": "此浏览器无法播放该视频。请改为下载。",
     "loadVideoPreview": "加载视频预览",
     "loadVideoPreviewFor": "加载视频预览 {title}",
     "videoPreviewLoading": "正在加载视频预览。下载过程中可以取消。",
@@ -4112,7 +4174,10 @@
       "bulkDeleteConfirm": "删除已选",
       "bulkDeleteDone": "已删除 {count} 个任务",
       "bulkDeletePartial": "{count} 个任务删除失败",
-      "bulkDeleteFailed": "删除已选任务失败"
+      "bulkDeleteFailed": "删除已选任务失败",
+      "moveToProjectDone": "已将任务移动到项目",
+      "moveToRecentsDone": "已将任务移出项目",
+      "moveToProjectFailed": "移动任务失败"
     },
     "setupBanner": {
       "ariaLabel": "需要设置网关",
@@ -4201,5 +4266,40 @@
       "copyFailed": "无法复制命令",
       "copyLabel": "复制网关重启命令"
     }
+  },
+  "pet": {
+    "name": "squilla",
+    "panelLabel": "宠物伙伴状态",
+    "statusLabel": "宠物伙伴：打开状态面板",
+    "levelLabel": "等级 {level}",
+    "xpBarLabel": "经验进度",
+    "xpLabel": "距下一级 {into} / {needed} 经验",
+    "xpMaxed": "已达到最高等级",
+    "feed": "喂食",
+    "followOn": "跟随鼠标",
+    "followOff": "停止跟随",
+    "hungerTimeHours": "已喂饱，{hours} 小时 {minutes} 分后饥饿",
+    "hungerTimeMinutes": "已喂饱，{minutes} 分钟后饥饿",
+    "hungerStarved": "已经饿死了……点击复活让它回来。",
+    "revive": "复活",
+    "hungerLabel": "饱食",
+    "waterLabel": "水分",
+    "restLabel": "精力",
+    "drink": "喝水",
+    "rest": "休息",
+    "stateFull": "状态良好",
+    "thirstyNow": "口渴了，喂点水吧",
+    "tiredNow": "困了，让它休息吧",
+    "feedCooldown": "刚喂过，稍后再来",
+    "moodThirsty": "好渴……给我喝点水好不好？",
+    "moodHungry": "肚子咕咕叫了……",
+    "moodTired": "好困呀……要不要休息一下？",
+    "moodHappy": "状态棒棒的，陪你工作！",
+    "levelUp": "升级啦！现在是 {level} 级",
+    "renameLabel": "给宠物改名字",
+    "reset": "重新开始",
+    "resetConfirmTitle": "和这只宠物重新开始吗？",
+    "resetConfirmBody": "等级、经验、位置和照顾记录都会清空，此操作无法撤销。",
+    "resetConfirmPrimary": "重新开始"
   }
 }

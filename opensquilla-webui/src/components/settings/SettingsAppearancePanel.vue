@@ -15,6 +15,7 @@ import {
 } from '@/composables/useToolDetailPreference'
 import { useRouterVisualEffectsPreference } from '@/composables/useRouterVisualEffectsPreference'
 import { useComposerFloatingPreference } from '@/composables/useComposerFloatingPreference'
+import { usePetVisiblePreference } from '@/composables/usePetVisiblePreference'
 import {
   SIDEBAR_MAX_WIDTH,
   SIDEBAR_MIN_WIDTH,
@@ -71,6 +72,10 @@ const {
   enabled: composerFxEnabled,
   setEnabled: setComposerFxEnabled,
 } = useComposerFloatingPreference()
+const {
+  enabled: petVisible,
+  setEnabled: setPetVisible,
+} = usePetVisiblePreference()
 
 function pickToolDetailDisplay(mode: ToolDetailDisplayMode) {
   setToolDetailDisplayMode(mode)
@@ -365,6 +370,22 @@ onBeforeUnmount(stopCustomStepRepeat)
           name="appearance_composer_fx"
           data-testid="settings-composer-fx-toggle"
           @change="setComposerFxEnabled"
+        />
+      </div>
+    </div>
+
+    <div class="control-row control-row--stack">
+      <div class="control-row__label-block">
+        <span class="control-row__label">{{ t('settings.appearance.petCompanionLabel') }}</span>
+        <span class="control-row__desc">{{ t('settings.appearance.petCompanionDesc') }}</span>
+      </div>
+      <div class="control-row__control">
+        <ControlSwitch
+          :checked="petVisible"
+          :aria-label="t('settings.appearance.petCompanionLabel')"
+          name="appearance_pet_companion"
+          data-testid="settings-pet-toggle"
+          @change="setPetVisible"
         />
       </div>
     </div>

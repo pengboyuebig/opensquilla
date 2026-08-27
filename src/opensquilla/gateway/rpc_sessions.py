@@ -6372,6 +6372,68 @@ async def _handle_sessions_rename(params: dict | None, ctx: RpcContext) -> dict:
     )
 
 
+@_d.method("sessions.moveWorkspace", scope="operator.write")
+async def _handle_sessions_move_workspace(
+    params: dict | None,
+    ctx: RpcContext,
+) -> dict[str, Any]:
+    """Move an existing session to a different project workspace or back to Recents.
+
+    A null ``workspaceId`` removes the session from any project.  Project
+    workspace mutations require a locally proven owner.
+    """
+
+    key = _require_key(params)
+    assert isinstance(params, dict)
+    unexpected = sorted(set(params) - {"key", "workspaceId"})
+    if unexpected:
+        raise RpcHandlerError(
+            code="INVALID_PARAMS",
+            message="sessions.moveWorkspace accepts only key and workspaceId.",
+            details={"unexpected_fields": unexpected},
+        )
+    if not ctx.principal.is_owner:
+        raise RpcHandlerError(
+            "OWNER_REQUIRED",
+            "Project workspaces require a locally proven owner.",
+        )
+    workspace_id = _optional_string_param(params, "workspaceId")
+
+    if ctx.session_manager is None:
+        raise KeyError("No session manager available")
+    storage = get_session_storage(ctx.session_manager)
+    if storage is None:
+        raise KeyError("No session storage available")
+
+    session = await storage.get_session(key)
+    if session is None:
+        raise KeyError(f"Session not found: {key}")
+
+    if workspace_id is not None:
+        try:
+            validated_workspace = await resolve_validated_project_workspace(
+                storage,
+                workspace_id,
+            )
+        except ProjectWorkspaceStateError as exc:
+            raise map_project_workspace_error(
+                exc,
+                owner=ctx.principal.is_owner,
+            ) from exc
+        workspace_id = validated_workspace.workspace.workspace_id
+
+    await storage.bind_session_workspace(key, workspace_id, touch_updated_at=True)
+
+    await _emit_to_subscribers(
+        ctx,
+        key,
+        "sessions.changed",
+        build_sessions_changed_payload(key, "workspace_changed", run_status="idle"),
+    )
+
+    return {"key": key, "workspaceId": workspace_id}
+
+
 @_d.method("sessions.reset", scope="operator.write")
 async def _handle_sessions_reset(params: dict | None, ctx: RpcContext) -> dict[str, Any]:
     """Synchronous session reset with FlushReceipt.

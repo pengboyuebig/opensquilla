@@ -6725,10 +6725,16 @@ class Agent:
         text_only_tool_recovery_injections = 0
         text_only_tool_recovery_pending = False
         task_completion_guard_nudges = 0
-        # Consecutive tool-less stops since the last tool execution, answered
-        # without the completion marker. Any tool-calling iteration resets it
-        # to zero, so each stop episode earns a fresh pair of nudges.
+        # Consecutive tool-less stops since the last effective progress batch,
+        # answered without the completion marker.
         task_completion_guard_unmarked_stops = 0
+        # A guard nudge armed a possible promise → tool → promise cycle. The
+        # cycle only counts if the following tool batch has no observable
+        # workspace mutation or published artifact, then another unmarked text
+        # stop occurs.
+        task_completion_guard_pending_text_promise = False
+        task_completion_guard_no_progress_tool_pending = False
+        task_completion_guard_no_progress_cycles = 0
         plan_run_reconciliation_attempts = 0
         attached_plan_run_id = str(
             getattr(self._tool_context, "plan_run_id", "") or ""
@@ -12419,12 +12425,26 @@ class Agent:
                         guard_marker_present = visible_text.lstrip().startswith(
                             _TASK_COMPLETION_GUARD_MARKER
                         )
+                        if guard_marker_present:
+                            task_completion_guard_pending_text_promise = False
+                            task_completion_guard_no_progress_tool_pending = False
+                            task_completion_guard_no_progress_cycles = 0
+                        elif task_completion_guard_no_progress_tool_pending:
+                            # Complete one text promise → no-progress tool →
+                            # text promise cycle. Only this exact sequence counts;
+                            # consecutive inspection tools alone do not.
+                            task_completion_guard_no_progress_cycles += 1
+                            task_completion_guard_pending_text_promise = False
+                            task_completion_guard_no_progress_tool_pending = False
+
                         guard_suppressed = (
                             not guard_headroom
                             or guard_marker_present
                             or task_completion_guard_unmarked_stops
                             >= guard_max_unmarked_stops
                             or task_completion_guard_nudges >= guard_max_nudges
+                            or task_completion_guard_no_progress_cycles
+                            >= guard_max_unmarked_stops
                         )
                         self.config.metadata["task_completion_guard_detections"] = (
                             self.config.metadata.get(
@@ -12453,6 +12473,8 @@ class Agent:
                         if not guard_suppressed:
                             task_completion_guard_nudges += 1
                             task_completion_guard_unmarked_stops += 1
+                            task_completion_guard_pending_text_promise = True
+                            task_completion_guard_no_progress_tool_pending = False
                             # Keep the emitted text: for long writing tasks the
                             # premature "final" message often carries real
                             # content (and was already streamed live); only the
@@ -12507,12 +12529,12 @@ class Agent:
                     max_iterations_finalization_pending = False
                     post_write_convergence_finalization_pending = False
                     break
-                # Any iteration that produced tool calls is real work, so the
-                # next tool-less stop earns a fresh round of completion nudges
-                # (budget permitting).
-                task_completion_guard_unmarked_stops = 0
                 tool_calls = [self._coerce_meta_tool_call(tc) for tc in tool_calls]
                 tool_calls = self._force_matched_meta_invoke_tool_calls(tool_calls)
+                task_completion_guard_progress_before = self._post_write_progress_count(
+                    workspace_write_count=len(self._effective_workspace_write_records()),
+                    mutation_receipt_counts=self._workspace_mutation_receipt_counts(),
+                )
 
                 tool_deadline = _loop.time() + self.config.iteration_timeout
                 _arm_endgame_git_freeze_if_due()
@@ -13422,6 +13444,21 @@ class Agent:
                     workspace_write_count=workspace_write_count,
                     mutation_receipt_counts=mutation_receipt_counts,
                 )
+                task_completion_guard_batch_made_progress = (
+                    post_write_progress_count
+                    > task_completion_guard_progress_before
+                    or any(
+                        not result.is_error and result.artifacts
+                        for result in executed_results
+                    )
+                )
+                if task_completion_guard_batch_made_progress:
+                    task_completion_guard_unmarked_stops = 0
+                    task_completion_guard_pending_text_promise = False
+                    task_completion_guard_no_progress_tool_pending = False
+                    task_completion_guard_no_progress_cycles = 0
+                elif task_completion_guard_pending_text_promise:
+                    task_completion_guard_no_progress_tool_pending = True
                 if len(tool_calls) == 1:
                     current_repeat_key = self._tool_call_repeat_key(tool_calls[0])
                     if current_repeat_key == repeated_tool_call_key:

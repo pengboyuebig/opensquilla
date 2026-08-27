@@ -317,7 +317,9 @@
       "sidebarWidthResizableStatus": "Ancho actual en el escritorio: {current}px.",
       "sidebarWidthClampedStatus": "Se guardaron {saved}px; esta ventana usa actualmente {current}px.",
       "sidebarWidthCompactStatus": "El diseño compacto usa {current}px. Se conserva tu preferencia de escritorio de {saved}px.",
-      "sidebarWidthDrawerStatus": "El diseño de cajón usa {current}px. Se conserva tu preferencia de escritorio de {saved}px."
+      "sidebarWidthDrawerStatus": "El diseño de cajón usa {current}px. Se conserva tu preferencia de escritorio de {saved}px.",
+      "petCompanionLabel": "Mostrar la mascota de escritorio",
+      "petCompanionDesc": "Una pequeña compañía que vive en la esquina del espacio de trabajo"
     },
     "dataMigration": {
       "title": "Datos y copias de seguridad",
@@ -393,9 +395,18 @@
       "retryFailedTitle": "No se pudo regenerar la vista previa",
       "retryFailedDescription": "Esta solicitud de regeneración no se completó. El resultado anterior sigue sin adoptarse y no se modificó ningún archivo. Inténtalo de nuevo o descarta la importación.",
       "jobStates": {
-        "cancelled": {"title": "Generación de vista previa cancelada", "description": "La fuente aislada se conserva durante 24 horas. La regeneración puede hacer hasta dos llamadas al modelo porque un resultado que no supere la validación puede reintentarse una vez; el resultado puede variar."},
-        "interrupted": {"title": "Generación de vista previa interrumpida", "description": "OpenSquilla se reinició durante el procesamiento del modelo. La fuente aislada sigue disponible. La regeneración puede hacer hasta dos llamadas al modelo debido a un reintento interno."},
-        "failed": {"title": "Error al generar la vista previa", "description": "Este intento no produjo una vista previa validada y revisable. No se adoptó ninguna decisión de importación ni se modificó ningún archivo. La fuente aislada se conservó; la regeneración puede hacer hasta dos llamadas al modelo."}
+        "cancelled": {
+          "title": "Generación de vista previa cancelada",
+          "description": "La fuente aislada se conserva durante 24 horas. La regeneración puede hacer hasta dos llamadas al modelo porque un resultado que no supere la validación puede reintentarse una vez; el resultado puede variar."
+        },
+        "interrupted": {
+          "title": "Generación de vista previa interrumpida",
+          "description": "OpenSquilla se reinició durante el procesamiento del modelo. La fuente aislada sigue disponible. La regeneración puede hacer hasta dos llamadas al modelo debido a un reintento interno."
+        },
+        "failed": {
+          "title": "Error al generar la vista previa",
+          "description": "Este intento no produjo una vista previa validada y revisable. No se adoptó ninguna decisión de importación ni se modificó ningún archivo. La fuente aislada se conservó; la regeneración puede hacer hasta dos llamadas al modelo."
+        }
       },
       "modelAnalysisTitle": "Análisis del modelo (contrástalo con los cambios de archivos)",
       "previewTitle": "Revisar todos los cambios de archivos",
@@ -461,42 +472,93 @@
       "available": "Modo seguro disponible",
       "unavailable": "Modo seguro no disponible",
       "builtin": "Integrado",
-      "actions": { "add": "Añadir", "remove": "Quitar", "retry": "Reintentar", "copy": "Copiar", "saving": "Guardando…", "redetect": "Volver a detectar" },
+      "actions": {
+        "add": "Añadir",
+        "remove": "Quitar",
+        "retry": "Reintentar",
+        "copy": "Copiar",
+        "saving": "Guardando…",
+        "redetect": "Volver a detectar"
+      },
       "mode": {
-        "title": "Modo de acceso predeterminado", "description": "Elige el modo inicial de las tareas nuevas. Seguro no se puede seleccionar si falla la comprobación.",
-        "default": "Modo predeterminado", "safe": "Seguro", "full": "Acceso completo", "resetWarning": "Volver a mostrar el aviso al iniciar"
+        "title": "Modo de acceso predeterminado",
+        "description": "Elige el modo inicial de las tareas nuevas. Seguro no se puede seleccionar si falla la comprobación.",
+        "default": "Modo predeterminado",
+        "safe": "Seguro",
+        "full": "Acceso completo",
+        "resetWarning": "Volver a mostrar el aviso al iniciar"
       },
       "setup": {
-        "title": "Configurar el modo Seguro", "description": "OpenSquilla necesita una autorización de administrador para crear una cuenta aislada y configurar la protección de archivos y red.", "descriptionWithDuration": "OpenSquilla necesita una autorización de administrador para crear una cuenta aislada y configurar las protecciones. La primera configuración suele tardar unos 20–30 segundos. Mantén OpenSquilla abierto.",
-        "continue": "Continuar", "configuring": "Configurando…", "requestingApproval": "Confirma el aviso de Windows para continuar.", "configuringProtection": "OpenSquilla está completando la configuración del modo Seguro. Mantén la aplicación abierta.", "takingLonger": "La primera configuración puede tardar unos minutos. La verificación se ejecutará automáticamente.", "elapsed": "{seconds} s transcurridos", "cancelled": "Configuración cancelada. El acceso completo no cambia; puedes volver a intentarlo.",
-        "failed": "No se pudo configurar el modo Seguro. El acceso completo no cambia.", "verificationFailed": "La configuración terminó, pero falló la comprobación de seguridad. El acceso completo no cambia.",
-        "runInBackground": "Configurar en segundo plano", "readyToast": "El modo Seguro está listo.", "failedToast": "No se pudo completar la configuración del modo Seguro. Vuelve a intentarlo desde el modo Seguro."
+        "title": "Configurar el modo Seguro",
+        "description": "OpenSquilla necesita una autorización de administrador para crear una cuenta aislada y configurar la protección de archivos y red.",
+        "descriptionWithDuration": "OpenSquilla necesita una autorización de administrador para crear una cuenta aislada y configurar las protecciones. La primera configuración suele tardar unos 20–30 segundos. Mantén OpenSquilla abierto.",
+        "continue": "Continuar",
+        "configuring": "Configurando…",
+        "requestingApproval": "Confirma el aviso de Windows para continuar.",
+        "configuringProtection": "OpenSquilla está completando la configuración del modo Seguro. Mantén la aplicación abierta.",
+        "takingLonger": "La primera configuración puede tardar unos minutos. La verificación se ejecutará automáticamente.",
+        "elapsed": "{seconds} s transcurridos",
+        "cancelled": "Configuración cancelada. El acceso completo no cambia; puedes volver a intentarlo.",
+        "failed": "No se pudo configurar el modo Seguro. El acceso completo no cambia.",
+        "verificationFailed": "La configuración terminó, pero falló la comprobación de seguridad. El acceso completo no cambia.",
+        "runInBackground": "Configurar en segundo plano",
+        "readyToast": "El modo Seguro está listo.",
+        "failedToast": "No se pudo completar la configuración del modo Seguro. Vuelve a intentarlo desde el modo Seguro."
       },
       "files": {
-        "title": "Seguridad de archivos", "description": "Los archivos normales son legibles. Los cambios en rutas protegidas requieren aprobación.", "readsAllowed": "Lectura permitida",
-        "customPath": "Ruta protegida personalizada", "pathPlaceholder": "Añadir ruta protegida", "backupTitle": "Crear copia antes de cambios destructivos",
-        "backupDescription": "Crea copias recuperables antes de eliminar o modificar archivos existentes y borra automáticamente las más antiguas cuando hace falta espacio.", "quota": "Límite de copias",
+        "title": "Seguridad de archivos",
+        "description": "Los archivos normales son legibles. Los cambios en rutas protegidas requieren aprobación.",
+        "readsAllowed": "Lectura permitida",
+        "customPath": "Ruta protegida personalizada",
+        "pathPlaceholder": "Añadir ruta protegida",
+        "backupTitle": "Crear copia antes de cambios destructivos",
+        "backupDescription": "Crea copias recuperables antes de eliminar o modificar archivos existentes y borra automáticamente las más antiguas cuando hace falta espacio.",
+        "quota": "Límite de copias",
         "recursiveWarning": "Sin copia, eliminar o reemplazar puede ser irrecuperable. Si la copia sigue fallando tras borrar las antiguas, OpenSquilla vuelve a pedir confirmación."
       },
       "commands": {
-        "title": "Seguridad de comandos", "description": "Los comandos se ejecutan automáticamente; operaciones como git push requieren aprobación.",
-        "systemTools": "Herramientas del sistema", "systemToolsAuto": "Permitir automáticamente", "systemToolsPrompt": "Preguntar antes", "systemToolsDisabled": "Desactivado",
-        "approvalPrefixes": "Prefijos que requieren aprobación", "autoPrefixes": "Prefijos siempre permitidos", "prefixPlaceholder": "Por ejemplo: git push"
+        "title": "Seguridad de comandos",
+        "description": "Los comandos se ejecutan automáticamente; operaciones como git push requieren aprobación.",
+        "systemTools": "Herramientas del sistema",
+        "systemToolsAuto": "Permitir automáticamente",
+        "systemToolsPrompt": "Preguntar antes",
+        "systemToolsDisabled": "Desactivado",
+        "approvalPrefixes": "Prefijos que requieren aprobación",
+        "autoPrefixes": "Prefijos siempre permitidos",
+        "prefixPlaceholder": "Por ejemplo: git push"
       },
       "network": {
-        "title": "Seguridad de red", "description": "La red pública se permite por defecto y se mantienen las protecciones SSRF y de metadatos.",
-        "blockAll": "Bloquear toda la red", "blockAllDescription": "Los dominios permitidos siguen siendo excepciones.", "allowDomains": "Dominios permitidos", "denyDomains": "Dominios rechazados"
+        "title": "Seguridad de red",
+        "description": "La red pública se permite por defecto y se mantienen las protecciones SSRF y de metadatos.",
+        "blockAll": "Bloquear toda la red",
+        "blockAllDescription": "Los dominios permitidos siguen siendo excepciones.",
+        "allowDomains": "Dominios permitidos",
+        "denyDomains": "Dominios rechazados"
       },
-      "runtimes": { "title": "Runtimes incluidos", "description": "Seguro prioriza las herramientas incluidas; Acceso completo prioriza las del host.", "target": "Destino del paquete" },
+      "runtimes": {
+        "title": "Runtimes incluidos",
+        "description": "Seguro prioriza las herramientas incluidas; Acceso completo prioriza las del host.",
+        "target": "Destino del paquete"
+      },
       "lan": {
-        "listen": "Escuchar en la red local", "listenDescription": "Se enlaza a todas las interfaces locales tras reiniciar; los pares públicos siguen bloqueados.",
-        "allowedCidrs": "CIDR de clientes permitidos", "cidrDescription": "Opcional. Vacío permite loopback, RFC1918 e IPv6 ULA; solo se puede restringir ese rango.",
+        "listen": "Escuchar en la red local",
+        "listenDescription": "Se enlaza a todas las interfaces locales tras reiniciar; los pares públicos siguen bloqueados.",
+        "allowedCidrs": "CIDR de clientes permitidos",
+        "cidrDescription": "Opcional. Vacío permite loopback, RFC1918 e IPv6 ULA; solo se puede restringir ese rango.",
         "restartRequired": "Reinicia OpenSquilla para aplicar el cambio.",
-        "title": "Acceso Web y tokens con nombre", "description": "El acceso Web remoto sin un token válido usa el modo seguro de invitado; los tokens con nombre conceden los permisos configurados.",
-        "guest": "Sin token o token incorrecto:", "guestDescription": " modo seguro de invitado: los archivos normales se pueden leer, solo se puede escribir en el espacio de trabajo predeterminado y no se pueden leer credenciales.",
-        "authenticated": "Token válido:", "authenticatedDescription": " puede usar Seguro o Acceso completo según sus capacidades.",
-        "tokenName": "Nombre del token, por ejemplo Portátil", "hostExecute": "Permitir host / Acceso completo", "createToken": "Crear token",
-        "copyNow": "Cópialo ahora. No volverá a mostrarse.", "fullCapable": "Seguro y Acceso completo", "safeOnly": "Solo Seguro", "revoke": "Revocar"
+        "title": "Acceso Web y tokens con nombre",
+        "description": "El acceso Web remoto sin un token válido usa el modo seguro de invitado; los tokens con nombre conceden los permisos configurados.",
+        "guest": "Sin token o token incorrecto:",
+        "guestDescription": " modo seguro de invitado: los archivos normales se pueden leer, solo se puede escribir en el espacio de trabajo predeterminado y no se pueden leer credenciales.",
+        "authenticated": "Token válido:",
+        "authenticatedDescription": " puede usar Seguro o Acceso completo según sus capacidades.",
+        "tokenName": "Nombre del token, por ejemplo Portátil",
+        "hostExecute": "Permitir host / Acceso completo",
+        "createToken": "Crear token",
+        "copyNow": "Cópialo ahora. No volverá a mostrarse.",
+        "fullCapable": "Seguro y Acceso completo",
+        "safeOnly": "Solo Seguro",
+        "revoke": "Revocar"
       }
     },
     "dialog": {
@@ -2398,15 +2460,60 @@
       "galleryEyebrow": "PLANTILLAS DE AUTOMATIZACIÓN",
       "bulkDeleteConfirm": "¿Eliminar las {count} automatizaciones seleccionadas? Esta acción no se puede deshacer.",
       "templates": {
-        "ai-daily": { "title": "Resumen diario de noticias de IA", "description": "Resume las noticias importantes de IA de las últimas 24 horas con fuentes verificadas.", "category": "Noticias", "schedule": "Cada día a las 08:00" },
-        "weekly-report": { "title": "Revisión semanal del trabajo", "description": "Resume avances, riesgos, entregas y prioridades de la próxima semana.", "category": "Productividad", "schedule": "Viernes a las 17:30" },
-        "english-five": { "title": "Cinco palabras en inglés al día", "description": "Crea una lección breve de vocabulario con ejemplos y un cuestionario.", "category": "Aprendizaje", "schedule": "Cada día a las 09:00" },
-        "project-risk": { "title": "Revisión de riesgos del proyecto", "description": "Revisa retrasos, errores y asuntos abiertos y propone acciones.", "category": "Proyectos", "schedule": "Laborables a las 10:00" },
-        "knowledge-review": { "title": "Revisión semanal de conocimientos", "description": "Organiza notas y reuniones nuevas y prepara una lista de seguimiento.", "category": "Conocimiento", "schedule": "Domingo a las 18:00" },
-        "daily-idea": { "title": "Idea y curiosidad del día", "description": "Comparte un dato fiable y una pequeña idea práctica.", "category": "Estilo de vida", "schedule": "Cada día a las 12:00" },
-        "bedtime-story": { "title": "Cuento diario para dormir", "description": "Escribe un cuento corto, cálido e imaginativo para leer en familia.", "category": "Familia", "schedule": "Cada día a las 20:30" },
-        "classic-movie": { "title": "Recomendación de cine clásico", "description": "Recomienda una película clásica reconocida con introducción sin spoilers.", "category": "Entretenimiento", "schedule": "Sábado a las 19:00" },
-        "today-in-history": { "title": "Tal día como hoy", "description": "Presenta un acontecimiento histórico fiable de ciencia, cultura o sociedad.", "category": "Conocimiento diario", "schedule": "Cada día a las 08:30" }
+        "ai-daily": {
+          "title": "Resumen diario de noticias de IA",
+          "description": "Resume las noticias importantes de IA de las últimas 24 horas con fuentes verificadas.",
+          "category": "Noticias",
+          "schedule": "Cada día a las 08:00"
+        },
+        "weekly-report": {
+          "title": "Revisión semanal del trabajo",
+          "description": "Resume avances, riesgos, entregas y prioridades de la próxima semana.",
+          "category": "Productividad",
+          "schedule": "Viernes a las 17:30"
+        },
+        "english-five": {
+          "title": "Cinco palabras en inglés al día",
+          "description": "Crea una lección breve de vocabulario con ejemplos y un cuestionario.",
+          "category": "Aprendizaje",
+          "schedule": "Cada día a las 09:00"
+        },
+        "project-risk": {
+          "title": "Revisión de riesgos del proyecto",
+          "description": "Revisa retrasos, errores y asuntos abiertos y propone acciones.",
+          "category": "Proyectos",
+          "schedule": "Laborables a las 10:00"
+        },
+        "knowledge-review": {
+          "title": "Revisión semanal de conocimientos",
+          "description": "Organiza notas y reuniones nuevas y prepara una lista de seguimiento.",
+          "category": "Conocimiento",
+          "schedule": "Domingo a las 18:00"
+        },
+        "daily-idea": {
+          "title": "Idea y curiosidad del día",
+          "description": "Comparte un dato fiable y una pequeña idea práctica.",
+          "category": "Estilo de vida",
+          "schedule": "Cada día a las 12:00"
+        },
+        "bedtime-story": {
+          "title": "Cuento diario para dormir",
+          "description": "Escribe un cuento corto, cálido e imaginativo para leer en familia.",
+          "category": "Familia",
+          "schedule": "Cada día a las 20:30"
+        },
+        "classic-movie": {
+          "title": "Recomendación de cine clásico",
+          "description": "Recomienda una película clásica reconocida con introducción sin spoilers.",
+          "category": "Entretenimiento",
+          "schedule": "Sábado a las 19:00"
+        },
+        "today-in-history": {
+          "title": "Tal día como hoy",
+          "description": "Presenta un acontecimiento histórico fiable de ciencia, cultura o sociedad.",
+          "category": "Conocimiento diario",
+          "schedule": "Cada día a las 08:30"
+        }
       }
     },
     "deleteDialog": {
@@ -2528,39 +2635,39 @@
       "fdChannel": "Un canal",
       "fdWebhook": "Un webhook",
       "enabled": "Activada",
-      "saveSchedule": "Guardar programación"
-      ,"friendlyNamePlaceholder": "Ejemplo: Organizar los comentarios de clientes cada día"
-      ,"friendlyTypeCron": "Repetir a una hora programada"
-      ,"friendlyTypeEvery": "Repetir a intervalo fijo"
-      ,"friendlyTypeAt": "Ejecutar una vez a una hora específica"
-      ,"executionFrequency": "Frecuencia"
-      ,"daily": "Cada día"
-      ,"weekdays": "Días laborables"
-      ,"weekly": "Cada semana"
-      ,"monthly": "Cada mes"
-      ,"customAdvancedTime": "Programación avanzada"
-      ,"weekday": "Día de la semana"
-      ,"date": "Fecha"
-      ,"monthlyDay": "Día {day} de cada mes"
-      ,"specificTime": "Hora"
-      ,"customTimeHint": "Usa una regla horaria más flexible."
-      ,"openAdvancedTime": "Abrir programación avanzada"
-      ,"everyHowOften": "Repetir cada"
-      ,"timeUnit": "Unidad de tiempo"
-      ,"minutes": "Minutos"
-      ,"hours": "Horas"
-      ,"days": "Días"
-      ,"dateAndTime": "Fecha y hora"
-      ,"friendlyMessagePlaceholder": "Ejemplo: Resumir los comentarios de clientes de hoy y sugerir próximos pasos"
-      ,"moreRuntimeSettings": "Más ajustes de ejecución (opcional)"
-      ,"advancedTimeHint": "Úsalo solo si el selector de hora anterior no es suficiente."
-      ,"timezoneSimpleHint": "Normalmente no es necesario cambiarlo."
-      ,"projectWorkspace": "Espacio de trabajo del proyecto"
-      ,"defaultWorkspace": "Usar el espacio de trabajo predeterminado"
-      ,"noWorkspace": "Sin espacio de proyecto"
-      ,"workspaceUnavailable": "{name} (no disponible)"
-      ,"workspaceRequiredHint": "Elige el proyecto que debe revisar esta tarea. La tarea trabajará únicamente dentro de ese proyecto."
-      ,"workspaceOptionalHint": "Opcional. Elige «Sin espacio de proyecto» para tareas generales o un proyecto cuando necesite sus archivos."
+      "saveSchedule": "Guardar programación",
+      "friendlyNamePlaceholder": "Ejemplo: Organizar los comentarios de clientes cada día",
+      "friendlyTypeCron": "Repetir a una hora programada",
+      "friendlyTypeEvery": "Repetir a intervalo fijo",
+      "friendlyTypeAt": "Ejecutar una vez a una hora específica",
+      "executionFrequency": "Frecuencia",
+      "daily": "Cada día",
+      "weekdays": "Días laborables",
+      "weekly": "Cada semana",
+      "monthly": "Cada mes",
+      "customAdvancedTime": "Programación avanzada",
+      "weekday": "Día de la semana",
+      "date": "Fecha",
+      "monthlyDay": "Día {day} de cada mes",
+      "specificTime": "Hora",
+      "customTimeHint": "Usa una regla horaria más flexible.",
+      "openAdvancedTime": "Abrir programación avanzada",
+      "everyHowOften": "Repetir cada",
+      "timeUnit": "Unidad de tiempo",
+      "minutes": "Minutos",
+      "hours": "Horas",
+      "days": "Días",
+      "dateAndTime": "Fecha y hora",
+      "friendlyMessagePlaceholder": "Ejemplo: Resumir los comentarios de clientes de hoy y sugerir próximos pasos",
+      "moreRuntimeSettings": "Más ajustes de ejecución (opcional)",
+      "advancedTimeHint": "Úsalo solo si el selector de hora anterior no es suficiente.",
+      "timezoneSimpleHint": "Normalmente no es necesario cambiarlo.",
+      "projectWorkspace": "Espacio de trabajo del proyecto",
+      "defaultWorkspace": "Usar el espacio de trabajo predeterminado",
+      "noWorkspace": "Sin espacio de proyecto",
+      "workspaceUnavailable": "{name} (no disponible)",
+      "workspaceRequiredHint": "Elige el proyecto que debe revisar esta tarea. La tarea trabajará únicamente dentro de ese proyecto.",
+      "workspaceOptionalHint": "Opcional. Elige «Sin espacio de proyecto» para tareas generales o un proyecto cuando necesite sus archivos."
     },
     "form": {
       "cronPreviewPlaceholder": "Introduce una expresión cron de 5 campos para previsualizar",
@@ -3197,9 +3304,18 @@
       "planTitle": "Plan de conservación",
       "planSummary": "Aproximadamente cada {interval} min · hasta unas {count} solicitudes · pausa tras {duration} min.",
       "costWarning": "Las solicitudes reales al proveedor pueden generar costes de tokens; no aparecen en el chat ni ejecutan herramientas.",
-      "statusLabel": "Estado", "targetLabel": "Proveedor / modelo", "lastHitLabel": "Últimos tokens en caché",
+      "statusLabel": "Estado",
+      "targetLabel": "Proveedor / modelo",
+      "lastHitLabel": "Últimos tokens en caché",
       "autoPauseLabel": "Pausa automática",
-      "states": { "off": "Desactivado", "waiting": "Esperando un prefijo estable", "scheduled": "Programado", "probing": "Sondeando", "paused": "Límite de inactividad alcanzado; esperando el siguiente mensaje", "stopped": "Detenido tras fallo" }
+      "states": {
+        "off": "Desactivado",
+        "waiting": "Esperando un prefijo estable",
+        "scheduled": "Programado",
+        "probing": "Sondeando",
+        "paused": "Límite de inactividad alcanzado; esperando el siguiente mensaje",
+        "stopped": "Detenido tras fallo"
+      }
     },
     "send": "Enviar",
     "sendQueues": "Enviar (se pone en cola hasta después de la respuesta actual)",
@@ -3301,7 +3417,7 @@
     "audioUnsupported": "Este navegador no puede reproducir este formato de audio. Descarga el archivo en su lugar.",
     "playVideo": "Reproducir vídeo",
     "videoLoadFailed": "No se pudo cargar el vídeo.",
-    "videoUnsupported": "Este navegador no puede reproducir este formato de vídeo. Descarga el archivo en su lugar.",
+    "videoUnsupported": "Este navegador no puede reproducir este vídeo. Descárgalo en su lugar.",
     "previewOf": "Vista previa: {title}",
     "closePreview": "Cerrar vista previa",
     "previousImage": "Imagen anterior",
@@ -3310,7 +3426,6 @@
     "previewDownload": "Descargar vista previa",
     "previewTimedOut": "Se agotó el tiempo de la vista previa.",
     "previewFailed": "No se pudo cargar la vista previa.",
-    "videoUnsupported": "Este navegador no puede reproducir este vídeo. Descárgalo en su lugar.",
     "loadVideoPreview": "Cargar vista previa del vídeo",
     "loadVideoPreviewFor": "Cargar vista previa del vídeo {title}",
     "videoPreviewLoading": "Cargando la vista previa del vídeo. Puedes cancelar la descarga.",
@@ -4059,7 +4174,10 @@
       "bulkDeleteConfirm": "Eliminar seleccionadas",
       "bulkDeleteDone": "{count} sesiones eliminadas",
       "bulkDeletePartial": "No se pudieron eliminar {count} sesiones",
-      "bulkDeleteFailed": "No se pudieron eliminar las sesiones seleccionadas"
+      "bulkDeleteFailed": "No se pudieron eliminar las sesiones seleccionadas",
+      "moveToProjectDone": "Task moved to project",
+      "moveToRecentsDone": "Task moved out of project",
+      "moveToProjectFailed": "Failed to move task"
     },
     "setupBanner": {
       "ariaLabel": "Es necesaria la configuración de la puerta de enlace",
@@ -4148,5 +4266,40 @@
       "copyFailed": "No se pudo copiar el comando",
       "copyLabel": "Copiar el comando de reinicio del gateway"
     }
+  },
+  "pet": {
+    "name": "Squilla",
+    "panelLabel": "Estado de la mascota compañera",
+    "statusLabel": "Mascota compañera: abrir panel de estado",
+    "levelLabel": "Nivel {level}",
+    "xpBarLabel": "Progreso de experiencia",
+    "xpLabel": "{into} / {needed} PX para el siguiente nivel",
+    "xpMaxed": "Nivel máximo alcanzado",
+    "feed": "Alimentar",
+    "followOn": "Seguir al cursor",
+    "followOff": "Dejar de seguir",
+    "hungerTimeHours": "Saciado. Tendrá hambre en {hours} h {minutes} min",
+    "hungerTimeMinutes": "Saciado. Tendrá hambre en {minutes} min",
+    "hungerStarved": "Murió de hambre… Aliméntalo para revivirlo.",
+    "revive": "Revivir",
+    "hungerLabel": "Comida",
+    "waterLabel": "Agua",
+    "restLabel": "Energía",
+    "drink": "Dar agua",
+    "rest": "Dejar descansar",
+    "stateFull": "En forma",
+    "thirstyNow": "Sediento — dale agua",
+    "tiredNow": "Cansado — necesita descanso",
+    "feedCooldown": "Alimentado hace poco — inténtalo más tarde",
+    "moodThirsty": "Tengo sed… ¿me das agua?",
+    "moodHungry": "Me gruñe el estómago…",
+    "moodTired": "Qué sueño… ¿descansamos un poco?",
+    "moodHappy": "¡Todo genial, encantado de acompañarte!",
+    "levelUp": "¡Subiste de nivel! Ahora nv. {level}",
+    "renameLabel": "Cambiar el nombre de la mascota",
+    "reset": "Empezar de nuevo",
+    "resetConfirmTitle": "¿Empezar de nuevo con esta mascota?",
+    "resetConfirmBody": "Se borrarán nivel, experiencia, posición e historial de cuidados. No se puede deshacer.",
+    "resetConfirmPrimary": "Empezar de nuevo"
   }
 }
