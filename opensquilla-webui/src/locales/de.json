@@ -4290,7 +4290,6 @@
     "stateFull": "Topfit",
     "thirstyNow": "Durstig — Wasser geben",
     "tiredNow": "Müde — braucht Ruhe",
-    "feedCooldown": "Kürzlich gefüttert — später erneut versuchen",
     "moodThirsty": "Ich habe Durst… gibst du mir Wasser?",
     "moodHungry": "Mein Magen knurrt…",
     "moodTired": "So müde… Zeit für eine Pause?",
@@ -4300,6 +4299,7 @@
     "reset": "Von vorn beginnen",
     "resetConfirmTitle": "Mit diesem Haustier von vorn beginnen?",
     "resetConfirmBody": "Level, Erfahrung, Position und Pflegeverlauf werden gelöscht. Nicht widerrufbar.",
-    "resetConfirmPrimary": "Von vorn beginnen"
+    "resetConfirmPrimary": "Von vorn beginnen",
+    "careCooldown": "Kürzlich gepflegt — später erneut versuchen"
   }
 }

@@ -33,6 +33,9 @@ interface StoredPetState {
   /** Last feeding that granted XP; absent/0 in records from before the
    * feed cooldown, which simply means the cooldown has long expired. */
   lastFeedXpAt?: number
+  /** XP clocks for the water/rest cooldowns; absent = never granted yet. */
+  lastWaterXpAt?: number
+  lastRestXpAt?: number
   /** Optional custom name; absent records fall back to the locale default. */
   name?: string
 }
@@ -53,8 +56,8 @@ export const DEFAULT_STARVATION_MS = 24 * 60 * 60 * 1000
 /** Thirst drains faster than hunger; energy sits in between. */
 export const WATER_WINDOW_MS = 8 * 60 * 60 * 1000
 export const REST_WINDOW_MS = 16 * 60 * 60 * 1000
-/** Minimum spacing between XP-granting feeds — feeding always resets the
- * hunger clock, but spam-clicking must not farm unlimited XP. */
+/** Minimum spacing between XP grants per care action (feed/water/rest each
+ * keep their own clock); the action itself always counts as care. */
 export const FEED_COOLDOWN_MS = 30 * 60 * 1000
 const AUTO_REFRESH_INTERVAL_MS = 30_000
 
@@ -135,6 +138,8 @@ function readStoredPetState(storage: PetStorageLike | null, nowTs: number): Stor
 
     // Optional field: pre-cooldown v2 records simply have no XP-clock yet.
     const lastFeedXpAt = finiteNumber(record.lastFeedXpAt)
+    const lastWaterXpAt = finiteNumber(record.lastWaterXpAt)
+    const lastRestXpAt = finiteNumber(record.lastRestXpAt)
     // Optional custom name, sanitized defensively.
     const rawName = typeof record.name === 'string' ? record.name.trim().slice(0, PET_NAME_MAX_LENGTH) : ''
 
@@ -148,6 +153,8 @@ function readStoredPetState(storage: PetStorageLike | null, nowTs: number): Stor
       lastWateredAt,
       lastRestedAt,
       lastFeedXpAt: lastFeedXpAt && lastFeedXpAt > 0 ? lastFeedXpAt : undefined,
+      lastWaterXpAt: lastWaterXpAt && lastWaterXpAt > 0 ? lastWaterXpAt : undefined,
+      lastRestXpAt: lastRestXpAt && lastRestXpAt > 0 ? lastRestXpAt : undefined,
       ...(rawName ? { name: rawName } : {}),
     }
   } catch {
@@ -186,8 +193,10 @@ export function createPetStore(options: {
   const lastFedAt = ref<number>(stored?.lastFedAt ?? now())
   const lastWateredAt = ref<number>(stored?.lastWateredAt ?? now())
   const lastRestedAt = ref<number>(stored?.lastRestedAt ?? now())
-  // XP clock for the feed cooldown; null = never granted (fresh pets can eat).
+  // XP clocks for the feed cooldown; null = never granted (fresh pets can eat).
   const lastFeedXpAt = ref<number | null>(stored?.lastFeedXpAt ?? null)
+  const lastWaterXpAt = ref<number | null>(stored?.lastWaterXpAt ?? null)
+  const lastRestXpAt = ref<number | null>(stored?.lastRestXpAt ?? null)
   // Empty string means "use the locale default name".
   const name = ref<string>(stored?.name ?? '')
   // Driven by tick(); time-derived values re-evaluate whenever it advances so
@@ -204,11 +213,14 @@ export function createPetStore(options: {
     Math.max(0, WATER_WINDOW_MS - (nowTick.value - lastWateredAt.value)))
   const restRemainingMs = computed(() =>
     Math.max(0, REST_WINDOW_MS - (nowTick.value - lastRestedAt.value)))
-  /** ms until the next feeding grants XP again; 0 when ready. */
-  const feedCooldownRemainingMs = computed(() => {
-    if (lastFeedXpAt.value === null) return 0
-    return Math.max(0, FEED_COOLDOWN_MS - (nowTick.value - lastFeedXpAt.value))
-  })
+  /** ms until the next XP-granting action of a kind; 0 when ready. */
+  function xpCooldownRemaining(lastXpAt: number | null): number {
+    if (lastXpAt === null) return 0
+    return Math.max(0, FEED_COOLDOWN_MS - (nowTick.value - lastXpAt))
+  }
+  const feedCooldownRemainingMs = computed(() => xpCooldownRemaining(lastFeedXpAt.value))
+  const waterXpCooldownRemainingMs = computed(() => xpCooldownRemaining(lastWaterXpAt.value))
+  const restXpCooldownRemainingMs = computed(() => xpCooldownRemaining(lastRestXpAt.value))
   // A need only exists once its meter has run dry — that is what makes the
   // matching care action meaningful instead of a spammable XP button.
   const needsWater = computed(() => waterRemainingMs.value <= 0)
@@ -226,6 +238,8 @@ export function createPetStore(options: {
       lastWateredAt: lastWateredAt.value,
       lastRestedAt: lastRestedAt.value,
       ...(lastFeedXpAt.value !== null ? { lastFeedXpAt: lastFeedXpAt.value } : {}),
+      ...(lastWaterXpAt.value !== null ? { lastWaterXpAt: lastWaterXpAt.value } : {}),
+      ...(lastRestXpAt.value !== null ? { lastRestXpAt: lastRestXpAt.value } : {}),
       ...(name.value ? { name: name.value } : {}),
     }
     try {
@@ -264,37 +278,44 @@ export function createPetStore(options: {
     if (isDead.value) return false
     const ts = now()
     lastFedAt.value = ts
-    if (feedCooldownRemainingMs.value <= 0) {
+    const granted = xpCooldownRemaining(lastFeedXpAt.value) <= 0
+    if (granted) {
       xp.value = Math.min(xp.value + XP_PER_FEED, MAX_TOTAL_XP)
       lastFeedXpAt.value = ts
-      persist()
-      return true
     }
-    // Within the cooldown the feed still counts as care (clock reset) but
-    // earns nothing; skip persisting to avoid churning storage per click.
-    return false
+    persist()
+    return granted
   }
 
-  /** Shared body for the gated care actions (drink/rest): only actionable
-   * while the matching need exists. */
-  function performGatedCare(kind: 'water' | 'rest'): boolean {
+  /** Shared body for water/rest: always actionable while alive — each resets
+   * its own care clock and persists, XP once per cooldown. */
+  function performCare(kind: 'water' | 'rest'): boolean {
     tick()
     if (isDead.value) return false
-    const needExists = kind === 'water' ? needsWater.value : needsRest.value
-    if (!needExists) return false
-    xp.value = Math.min(
-      xp.value + (kind === 'water' ? XP_PER_DRINK : XP_PER_REST),
-      MAX_TOTAL_XP,
-    )
-    if (kind === 'water') lastWateredAt.value = now()
-    else lastRestedAt.value = now()
+    const ts = now()
+    const granted = kind === 'water'
+      ? xpCooldownRemaining(lastWaterXpAt.value) <= 0
+      : xpCooldownRemaining(lastRestXpAt.value) <= 0
+    if (kind === 'water') {
+      lastWateredAt.value = ts
+      if (granted) {
+        xp.value = Math.min(xp.value + XP_PER_DRINK, MAX_TOTAL_XP)
+        lastWaterXpAt.value = ts
+      }
+    } else {
+      lastRestedAt.value = ts
+      if (granted) {
+        xp.value = Math.min(xp.value + XP_PER_REST, MAX_TOTAL_XP)
+        lastRestXpAt.value = ts
+      }
+    }
     persist()
-    return true
+    return granted
   }
 
-  /** Give water; refuses while the pet is still hydrated. */
+  /** Give water; refuses while dead. */
   function drink(): boolean {
-    return performGatedCare('water')
+    return performCare('water')
   }
 
   /** Set a custom name (trimmed, hard-capped); refuses empty input. */
@@ -317,24 +338,28 @@ export function createPetStore(options: {
     lastWateredAt.value = ts
     lastRestedAt.value = ts
     lastFeedXpAt.value = null
+    lastWaterXpAt.value = null
+    lastRestXpAt.value = null
     name.value = ''
     nowTick.value = ts
     persist()
   }
 
-  /** Let the pet rest; refuses while it still has energy. */
+  /** Let the pet rest; refuses while dead. */
   function rest(): boolean {
-    return performGatedCare('rest')
+    return performCare('rest')
   }
 
   /** Bring a starved pet back: keep XP/level, restart every care clock and
-   * clear the feed cooldown so the first revival feeding earns XP. */
+   * clear the XP cooldowns so revival care earns XP again. */
   function revive() {
     const ts = now()
     lastFedAt.value = ts
     lastWateredAt.value = ts
     lastRestedAt.value = ts
     lastFeedXpAt.value = null
+    lastWaterXpAt.value = null
+    lastRestXpAt.value = null
     nowTick.value = ts
     persist()
   }
@@ -374,6 +399,8 @@ export function createPetStore(options: {
     needsWater,
     needsRest,
     feedCooldownRemainingMs,
+    waterXpCooldownRemainingMs,
+    restXpCooldownRemainingMs,
     name,
     feed,
     drink,

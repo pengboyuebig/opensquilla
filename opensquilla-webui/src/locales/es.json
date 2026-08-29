@@ -4290,7 +4290,6 @@
     "stateFull": "En forma",
     "thirstyNow": "Sediento — dale agua",
     "tiredNow": "Cansado — necesita descanso",
-    "feedCooldown": "Alimentado hace poco — inténtalo más tarde",
     "moodThirsty": "Tengo sed… ¿me das agua?",
     "moodHungry": "Me gruñe el estómago…",
     "moodTired": "Qué sueño… ¿descansamos un poco?",
@@ -4300,6 +4299,7 @@
     "reset": "Empezar de nuevo",
     "resetConfirmTitle": "¿Empezar de nuevo con esta mascota?",
     "resetConfirmBody": "Se borrarán nivel, experiencia, posición e historial de cuidados. No se puede deshacer.",
-    "resetConfirmPrimary": "Empezar de nuevo"
+    "resetConfirmPrimary": "Empezar de nuevo",
+    "careCooldown": "Atendido hace poco — inténtalo más tarde"
   }
 }

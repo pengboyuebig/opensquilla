@@ -124,25 +124,29 @@
           class="btn btn--sm pet-action"
           data-testid="pet-feed"
           :disabled="pet.feedCooldownRemainingMs.value > 0"
-          :title="t('pet.feedCooldown')"
+          :title="t('pet.careCooldown')"
           @click="onFeed"
         >
           {{ t('pet.feed') }}
         </button>
         <button
-          v-if="pet.needsWater.value && !pet.isDead.value"
+          v-if="!pet.isDead.value"
           type="button"
           class="btn btn--sm pet-action"
           data-testid="pet-drink"
+          :disabled="pet.waterXpCooldownRemainingMs.value > 0"
+          :title="t('pet.careCooldown')"
           @click="onDrink"
         >
           {{ t('pet.drink') }}
         </button>
         <button
-          v-if="pet.needsRest.value && !pet.isDead.value"
+          v-if="!pet.isDead.value"
           type="button"
           class="btn btn--sm pet-action"
           data-testid="pet-rest"
+          :disabled="pet.restXpCooldownRemainingMs.value > 0"
+          :title="t('pet.careCooldown')"
           @click="onRest"
         >
           {{ t('pet.rest') }}

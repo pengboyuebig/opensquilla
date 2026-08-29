@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { LEVEL_XP_BASE, REST_WINDOW_MS, WATER_WINDOW_MS, XP_PER_FEED } from '@/composables/usePet'
+import { LEVEL_XP_BASE, WATER_WINDOW_MS, XP_PER_FEED } from '@/composables/usePet'
 
 const PET_STORAGE_KEY = 'opensquilla-pet-v1'
 
@@ -148,33 +148,43 @@ describe('PetCompanion', () => {
     expect(testId(el, 'pet-meter-water')!.textContent).not.toBe('')
     expect(testId(el, 'pet-meter-rest')!.textContent).not.toBe('')
     expect(el.querySelector('[role="progressbar"]')).toBeTruthy()
-    // No need exists yet: drink/rest buttons stay hidden.
-    expect(testId(el, 'pet-drink')).toBeNull()
-    expect(testId(el, 'pet-rest')).toBeNull()
+    // All care actions are reachable even with full meters.
+    expect(testId(el, 'pet-drink')).toBeTruthy()
+    expect(testId(el, 'pet-rest')).toBeTruthy()
   })
 
-  it('shows drink/rest buttons only when the matching need appears', async () => {
-    // 16 h old: fed (alive, 8 h left on hunger) and thirsty, but rested.
-    const later = 1_000_000 + REST_WINDOW_MS
+  it('water and rest actions are always available and grant xp on first use', async () => {
+    const { el, nextTick } = await mountCompanion()
+    const anchor = testId(el, 'pet-anchor')!
+
+    anchor.click()
+    await nextTick()
+
+    const drink = testId(el, 'pet-drink') as HTMLButtonElement
+    const rest = testId(el, 'pet-rest') as HTMLButtonElement
+    expect(drink.disabled).toBe(false)
+    expect(rest.disabled).toBe(false)
+
+    drink.click()
+    await nextTick()
+    // The care landed and persisted, but the xp cooldown now disables the button.
+    expect(JSON.parse(knobs.storage!.getItem(PET_STORAGE_KEY)!).lastWateredAt).toBe(1_000_000)
+    expect(drink.disabled).toBe(true)
+    expect(rest.disabled).toBe(false)
+  })
+
+  it('care buttons disable while their own xp cooldown runs', async () => {
     const { el, nextTick } = await mountCompanion({
-      now: () => later,
-      storedState: {
-        lastFedAt: 1_000_000,
-        lastWateredAt: 1_000_000,
-        lastRestedAt: later - 60_000,
-      },
+      storedState: { lastFeedXpAt: 1_000_000, lastWaterXpAt: 1_000_000, lastRestXpAt: 1_000_000 },
     })
 
     testId(el, 'pet-anchor')!.click()
     await nextTick()
 
-    expect(testId(el, 'pet-drink')!.textContent).toContain('Give water')
-    expect(testId(el, 'pet-rest')).toBeNull()
-
-    testId(el, 'pet-drink')!.click()
-    await nextTick()
-    // Thirst quenched — the button disappears again.
-    expect(testId(el, 'pet-drink')).toBeNull()
+    expect((testId(el, 'pet-feed') as HTMLButtonElement).disabled).toBe(true)
+    expect((testId(el, 'pet-drink') as HTMLButtonElement).disabled).toBe(true)
+    expect((testId(el, 'pet-rest') as HTMLButtonElement).disabled).toBe(true)
+    expect((testId(el, 'pet-drink') as HTMLButtonElement).getAttribute('title')).toContain('Recently cared')
   })
 
   it('feed works while off cooldown and disables during it', async () => {
@@ -201,7 +211,7 @@ describe('PetCompanion', () => {
 
     const feed = testId(el, 'pet-feed') as HTMLButtonElement | null
     expect(feed?.disabled).toBe(true)
-    expect(feed?.getAttribute('title')).toContain('Recently fed')
+    expect(feed?.getAttribute('title')).toContain('Recently cared')
     // A rejected click must not conjure an xp burst.
     feed?.click()
     await nextTick()

@@ -4290,7 +4290,6 @@
     "stateFull": "En forme",
     "thirstyNow": "Assoiffé — donnez à boire",
     "tiredNow": "Fatigué — besoin de repos",
-    "feedCooldown": "Nourri récemment — réessayez plus tard",
     "moodThirsty": "J’ai soif… de l’eau, s’il te plaît ?",
     "moodHungry": "Mon ventre gargouille…",
     "moodTired": "Je tombe de sommeil… une pause ?",
@@ -4300,6 +4299,7 @@
     "reset": "Recommencer",
     "resetConfirmTitle": "Recommencer avec cet animal ?",
     "resetConfirmBody": "Niveau, expérience, position et historique de soins seront effacés. Irréversible.",
-    "resetConfirmPrimary": "Recommencer"
+    "resetConfirmPrimary": "Recommencer",
+    "careCooldown": "Soigné récemment — réessayez plus tard"
   }
 }

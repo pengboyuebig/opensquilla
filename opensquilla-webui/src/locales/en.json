@@ -4290,7 +4290,6 @@
     "stateFull": "All good",
     "thirstyNow": "Thirsty — give water",
     "tiredNow": "Tired — needs rest",
-    "feedCooldown": "Recently fed — try again later",
     "moodThirsty": "I am thirsty… give me water?",
     "moodHungry": "My tummy is rumbling…",
     "moodTired": "So sleepy… time to rest?",
@@ -4300,6 +4299,7 @@
     "reset": "Start over",
     "resetConfirmTitle": "Start over with this pet?",
     "resetConfirmBody": "Level, experience, position and care history will be wiped. This cannot be undone.",
-    "resetConfirmPrimary": "Start over"
+    "resetConfirmPrimary": "Start over",
+    "careCooldown": "Recently cared for — try again later"
   }
 }

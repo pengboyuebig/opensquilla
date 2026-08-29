@@ -93,35 +93,31 @@ describe('createPetStore', () => {
     })
   })
 
-  it('drink only works once the pet is actually thirsty', () => {
+  it('drink and rest are always actionable; xp respects per-action cooldowns', () => {
     let t = 0
     const pet = createPetStore({ storage, now: () => t })
-    // Fresh pet is fully hydrated: no need, no xp, nothing persisted yet.
+    // Fresh pet: no needs yet, but care works right away.
     expect(pet.needsWater.value).toBe(false)
-    expect(pet.drink()).toBe(false)
-    expect(storage.data.has(PET_STORAGE_KEY)).toBe(false)
-
-    t = WATER_WINDOW_MS + 1
-    pet.tick()
-    expect(pet.needsWater.value).toBe(true)
+    expect(pet.needsRest.value).toBe(false)
     expect(pet.drink()).toBe(true)
     expect(pet.xp.value).toBe(XP_PER_DRINK)
-    const stored = JSON.parse(storage.data.get(PET_STORAGE_KEY)!)
-    expect(stored.lastWateredAt).toBe(t)
-
-    // The meter refilled; a second sip is refused on the same tick.
-    expect(pet.drink()).toBe(false)
-  })
-
-  it('rest follows the same gated pattern as drink', () => {
-    let t = 0
-    const pet = createPetStore({ storage, now: () => t })
-    expect(pet.rest()).toBe(false)
-
-    t = REST_WINDOW_MS + 5
     expect(pet.rest()).toBe(true)
-    expect(pet.xp.value).toBe(XP_PER_REST)
-    expect(pet.rest()).toBe(false)
+    expect(pet.xp.value).toBe(XP_PER_DRINK + XP_PER_REST)
+
+    // Immediate re-care still resets the clock and persists…
+    t = 60_000
+    expect(pet.drink()).toBe(false)
+    expect(pet.xp.value).toBe(XP_PER_DRINK + XP_PER_REST)
+    expect(JSON.parse(storage.data.get(PET_STORAGE_KEY)!).lastWateredAt).toBe(60_000)
+
+    // …and XP returns once each cooldown has passed.
+    t = FEED_COOLDOWN_MS + 1
+    pet.tick()
+    expect(pet.waterXpCooldownRemainingMs.value).toBe(0)
+    expect(pet.drink()).toBe(true)
+    expect(pet.xp.value).toBe(2 * XP_PER_DRINK + XP_PER_REST)
+    expect(pet.rest()).toBe(true)
+    expect(pet.xp.value).toBe(2 * (XP_PER_DRINK + XP_PER_REST))
   })
 
   it('death blocks drink and rest like it blocks feed', () => {
@@ -141,11 +137,11 @@ describe('createPetStore', () => {
     expect(pet.feed()).toBe(true)
     expect(pet.xp.value).toBe(XP_PER_FEED)
 
-    // Spam-clicks inside the cooldown still care in memory (hunger resets)
-    // but skip persisting — storage keeps the granted-feed snapshot from t=0.
+    // Spam-clicks inside the cooldown still count as care: hunger resets to
+    // `t` and lands in storage, but no extra XP is granted.
     t = 60_000
     expect(pet.feed()).toBe(false)
-    expect(JSON.parse(storage.data.get(PET_STORAGE_KEY)!).lastFedAt).toBe(0)
+    expect(JSON.parse(storage.data.get(PET_STORAGE_KEY)!).lastFedAt).toBe(60_000)
 
     // …grant nothing until the cooldown passes.
     t = FEED_COOLDOWN_MS - 30_000

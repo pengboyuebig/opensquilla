@@ -4290,7 +4290,6 @@
     "stateFull": "状态良好",
     "thirstyNow": "口渴了，喂点水吧",
     "tiredNow": "困了，让它休息吧",
-    "feedCooldown": "刚喂过，稍后再来",
     "moodThirsty": "好渴……给我喝点水好不好？",
     "moodHungry": "肚子咕咕叫了……",
     "moodTired": "好困呀……要不要休息一下？",
@@ -4300,6 +4299,7 @@
     "reset": "重新开始",
     "resetConfirmTitle": "和这只宠物重新开始吗？",
     "resetConfirmBody": "等级、经验、位置和照顾记录都会清空，此操作无法撤销。",
-    "resetConfirmPrimary": "重新开始"
+    "resetConfirmPrimary": "重新开始",
+    "careCooldown": "刚照顾过，稍后再来"
   }
 }

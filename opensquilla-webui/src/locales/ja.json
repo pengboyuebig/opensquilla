@@ -4290,7 +4290,6 @@
     "stateFull": "絶好調",
     "thirstyNow": "喉が渇いています",
     "tiredNow": "眠そうです",
-    "feedCooldown": "授食したばかりです",
     "moodThirsty": "喉が渇いたなぁ……お水ちょうだい。",
     "moodHungry": "お腹がペコペコ……",
     "moodTired": "眠いよぉ……ちょっと休憩しよう？",
@@ -4300,6 +4299,7 @@
     "reset": "はじめから",
     "resetConfirmTitle": "このペットをはじめからにしますか？",
     "resetConfirmBody": "レベル・経験値・位置・お世話の記録がすべて消えます。元に戻せません。",
-    "resetConfirmPrimary": "はじめから"
+    "resetConfirmPrimary": "はじめから",
+    "careCooldown": "お世話したばかりです"
   }
 }
